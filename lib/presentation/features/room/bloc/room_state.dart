@@ -11,6 +11,7 @@ class RoomState extends Equatable {
   final bool isMicEnabled;
   final bool isCameraEnabled;
   final int updateCount;
+  final List<Participant> activeSpeakers;
 
   const RoomState({
     this.status = RoomStatus.initial,
@@ -20,6 +21,7 @@ class RoomState extends Equatable {
     this.isMicEnabled = false,
     this.isCameraEnabled = true,
     this.updateCount = 0,
+    this.activeSpeakers = const [],
   });
 
   RoomState copyWith({
@@ -30,6 +32,7 @@ class RoomState extends Equatable {
     bool? isMicEnabled,
     bool? isCameraEnabled,
     int? updateCount,
+    List<Participant>? activeSpeakers,
   }) {
     return RoomState(
       status: status ?? this.status,
@@ -39,6 +42,7 @@ class RoomState extends Equatable {
       isMicEnabled: isMicEnabled ?? this.isMicEnabled,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
       updateCount: updateCount ?? this.updateCount,
+      activeSpeakers: activeSpeakers ?? this.activeSpeakers,
     );
   }
 
@@ -51,5 +55,6 @@ class RoomState extends Equatable {
     isMicEnabled,
     isCameraEnabled,
     updateCount,
+    activeSpeakers,
   ];
 }

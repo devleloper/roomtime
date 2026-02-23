@@ -45,3 +45,11 @@ class RoomParticipantsChanged extends RoomEvent {
   @override
   List<Object?> get props => [participants];
 }
+
+class ActiveSpeakersChanged extends RoomEvent {
+  final List<Participant> activeSpeakers;
+  const ActiveSpeakersChanged(this.activeSpeakers);
+
+  @override
+  List<Object?> get props => [activeSpeakers];
+}

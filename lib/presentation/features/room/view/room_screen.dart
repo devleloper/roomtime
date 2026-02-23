@@ -6,6 +6,8 @@ import 'package:livekit_client/livekit_client.dart';
 import '../../../../core/di/injection.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/custom_bounce_button.dart';
+import '../widgets/draggable_pip_view.dart';
+import '../widgets/mission_control_grid.dart';
 import '../bloc/room_bloc.dart';
 import '../bloc/room_event.dart';
 import '../bloc/room_state.dart';
@@ -29,53 +31,27 @@ class RoomScreen extends StatelessWidget {
         builder: (context, state) {
           return Scaffold(
             backgroundColor: Colors.black,
-            body: SafeArea(
-              child: Stack(
-                children: [
-                  _buildVideoGrid(context, state),
-                  if (state.status == RoomStatus.connecting)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  if (state.status == RoomStatus.error)
-                    Center(
-                      child: Text(
-                        state.errorMessage ?? 'Error connecting',
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                    ),
-                  Positioned(
-                    bottom: 30,
-                    left: 0,
-                    right: 0,
-                    child: _buildMediaControls(context, state),
+            body: Stack(
+              children: [
+                _buildVideoLayout(context, state),
+                if (state.status == RoomStatus.connecting)
+                  const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
                   ),
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    child: CustomBounceButton(
-                      onPressed: () {
-                        context.read<RoomBloc>().add(DisconnectRoom());
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          context.go('/');
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.close, color: Colors.white),
-                      ),
+                if (state.status == RoomStatus.error)
+                  Center(
+                    child: Text(
+                      state.errorMessage ?? 'Error connecting',
+                      style: const TextStyle(color: AppColors.error),
                     ),
                   ),
-                ],
-              ),
+                Positioned(
+                  bottom: 30,
+                  left: 0,
+                  right: 0,
+                  child: _buildMediaControls(context, state),
+                ),
+              ],
             ),
           );
         },
@@ -83,48 +59,60 @@ class RoomScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoGrid(BuildContext context, RoomState state) {
+  Widget _buildVideoLayout(BuildContext context, RoomState state) {
     if (state.participants.isEmpty) return const SizedBox.shrink();
 
-    // Basic grid logic
-    return GridView.builder(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: state.participants.length > 2 ? 2 : 1,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: state.participants.length,
-      itemBuilder: (context, index) {
-        final participant = state.participants[index];
-        final videoTrack =
-            participant.videoTrackPublications
-                    .firstWhereOrNull((p) => p.track != null)
-                    ?.track
-                as VideoTrack?;
+    // 1 Participant (Only Local)
+    if (state.participants.length == 1) {
+      return _buildFullscreenVideo(state.participants.first);
+    }
 
-        if (videoTrack != null) {
-          return Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: VideoTrackRenderer(
-                videoTrack,
-                // Using VideoViewFit from livekit for correct typing
-              ),
-            ),
-          );
-        } else {
-          return Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Center(
-              child: Icon(Icons.person, size: 64, color: Colors.white24),
-            ),
-          );
-        }
-      },
+    // 2 Participants (1-on-1 Call)
+    if (state.participants.length == 2) {
+      final local = state.room?.localParticipant;
+      final remote = state.participants.firstWhereOrNull((p) => p != local);
+
+      return Stack(
+        children: [
+          if (remote != null) _buildFullscreenVideo(remote),
+          if (local != null) DraggablePipView(child: _buildVideoView(local)),
+        ],
+      );
+    }
+
+    // 3+ Participants (Mission Control Grid)
+    return _buildMissionControlGrid(context, state);
+  }
+
+  Widget _buildFullscreenVideo(Participant participant) {
+    return SizedBox.expand(child: _buildVideoView(participant));
+  }
+
+  Widget _buildVideoView(Participant participant) {
+    final videoTrack =
+        participant.videoTrackPublications
+                .firstWhereOrNull((p) => p.track != null)
+                ?.track
+            as VideoTrack?;
+
+    if (videoTrack != null) {
+      return VideoTrackRenderer(videoTrack);
+    }
+
+    return Container(
+      color: AppColors.surface,
+      child: const Center(
+        child: Icon(Icons.person, size: 64, color: Colors.white24),
+      ),
+    );
+  }
+
+  Widget _buildMissionControlGrid(BuildContext context, RoomState state) {
+    return MissionControlGrid(
+      participants: state.participants,
+      activeSpeakers: state.activeSpeakers,
+      buildVideoView: (participant, {fit = VideoViewFit.cover}) =>
+          _buildVideoView(participant),
     );
   }
 
