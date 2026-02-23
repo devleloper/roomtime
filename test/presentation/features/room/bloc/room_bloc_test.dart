@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bloc_test/bloc_test.dart';
 // Note: We'd mock IRoomRepository and LiveKit dependencies using mockito/mocktail
 // This is a foundational test skeleton respecting the spec.
 

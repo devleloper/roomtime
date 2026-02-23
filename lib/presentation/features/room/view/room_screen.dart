@@ -1,9 +1,11 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
-import '../../../core/di/injection.dart';
-import '../../theme/app_colors.dart';
-import '../../widgets/custom_bounce_button.dart';
+import '../../../../core/di/injection.dart';
+import '../../../theme/app_colors.dart';
+import '../../../widgets/custom_bounce_button.dart';
 import '../bloc/room_bloc.dart';
 import '../bloc/room_event.dart';
 import '../bloc/room_state.dart';
@@ -56,12 +58,16 @@ class RoomScreen extends StatelessWidget {
                     child: CustomBounceButton(
                       onPressed: () {
                         context.read<RoomBloc>().add(DisconnectRoom());
-                        Navigator.of(context).pop();
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/');
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.close, color: Colors.white),
@@ -102,8 +108,8 @@ class RoomScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: VideoTrackRenderer(
                 videoTrack,
-                fit: BoxFit.cover,
-              ), // Render LiveKit VideoTrack
+                // Using VideoViewFit from livekit for correct typing
+              ),
             ),
           );
         } else {
@@ -149,7 +155,11 @@ class RoomScreen extends StatelessWidget {
         const SizedBox(width: 20),
         _buildMediaButton(Icons.call_end, () {
           context.read<RoomBloc>().add(DisconnectRoom());
-          Navigator.of(context).pop();
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
         }, color: AppColors.error),
       ],
     );

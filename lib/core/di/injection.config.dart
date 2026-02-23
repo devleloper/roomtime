@@ -14,8 +14,12 @@ import 'package:injectable/injectable.dart' as _i526;
 
 import '../../data/datasources/api_data_source.dart' as _i882;
 import '../../data/datasources/livekit_data_source.dart' as _i926;
+import '../../data/repositories/auth_repository.dart' as _i481;
 import '../../data/repositories/room_repository.dart' as _i393;
+import '../../domain/repositories/i_auth_repository.dart' as _i841;
 import '../../domain/repositories/i_room_repository.dart' as _i80;
+import '../../presentation/features/auth/bloc/auth_bloc.dart' as _i379;
+import '../../presentation/features/room/bloc/room_bloc.dart' as _i1033;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -31,6 +35,15 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i882.ApiDataSource>(),
         gh<_i926.LiveKitDataSource>(),
       ),
+    );
+    gh.factory<_i841.IAuthRepository>(
+      () => _i481.AuthRepository(gh<_i882.ApiDataSource>()),
+    );
+    gh.factory<_i1033.RoomBloc>(
+      () => _i1033.RoomBloc(gh<_i80.IRoomRepository>()),
+    );
+    gh.factory<_i379.AuthBloc>(
+      () => _i379.AuthBloc(gh<_i841.IAuthRepository>()),
     );
     return this;
   }

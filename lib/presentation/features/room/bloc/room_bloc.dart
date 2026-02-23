@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
-import 'package:livekit_client/livekit_client.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import '../../../../domain/repositories/i_room_repository.dart';
 import 'room_event.dart';
 import 'room_state.dart';
@@ -9,7 +9,7 @@ import 'room_state.dart';
 @injectable
 class RoomBloc extends Bloc<RoomEvent, RoomState> {
   final IRoomRepository _roomRepository;
-  StreamSubscription? _roomListener;
+  lk.CancelListenFunc? _roomListener;
 
   RoomBloc(this._roomRepository) : super(const RoomState()) {
     on<ConnectToRoom>(_onConnectToRoom);
@@ -32,11 +32,11 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       );
       final room = await _roomRepository.connectToRoom(token);
 
-      _roomListener = room.createListener().stream.listen((roomEvent) {
-        if (roomEvent is ParticipantConnected ||
-            roomEvent is ParticipantDisconnected ||
-            roomEvent is TrackSubscribed ||
-            roomEvent is TrackUnsubscribed) {
+      _roomListener = room.createListener().on<lk.RoomEvent>((roomEvent) {
+        if (roomEvent is lk.ParticipantConnectedEvent ||
+            roomEvent is lk.ParticipantDisconnectedEvent ||
+            roomEvent is lk.TrackSubscribedEvent ||
+            roomEvent is lk.TrackUnsubscribedEvent) {
           add(
             RoomParticipantsChanged([
               room.localParticipant!,
@@ -81,16 +81,42 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     ToggleMicrophone event,
     Emitter<RoomState> emit,
   ) async {
-    await _roomRepository.toggleMicrophone(event.enabled);
-    emit(state.copyWith(isMicEnabled: event.enabled));
+    try {
+      await _roomRepository.toggleMicrophone(event.enabled);
+      emit(state.copyWith(isMicEnabled: event.enabled));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          status: RoomStatus.error,
+          errorMessage:
+              "Microphone access failed (e.g., Device has no microphone)",
+        ),
+      );
+      emit(
+        state.copyWith(status: RoomStatus.connected),
+      ); // Reset to connected so UI stays
+    }
   }
 
   Future<void> _onToggleCamera(
     ToggleCamera event,
     Emitter<RoomState> emit,
   ) async {
-    await _roomRepository.toggleCamera(event.enabled);
-    emit(state.copyWith(isCameraEnabled: event.enabled));
+    try {
+      await _roomRepository.toggleCamera(event.enabled);
+      emit(state.copyWith(isCameraEnabled: event.enabled));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          status: RoomStatus.error,
+          errorMessage:
+              "Camera access failed (e.g., iOS Simulator has no camera)",
+        ),
+      );
+      emit(
+        state.copyWith(status: RoomStatus.connected),
+      ); // Reset to connected so UI stays
+    }
   }
 
   Future<void> _onSwitchCamera(
@@ -109,11 +135,12 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
 
   @override
   Future<void> close() async {
-    await _roomListener?.cancel();
-    if (state.room != null) {
-      // Strict memory management
-      await state.room!.disconnect();
-      state.room!.dispose();
+    if (_roomListener != null) {
+      _roomListener!();
+    }
+    final room = state.room;
+    if (room != null) {
+      await room.disconnect();
     }
     return super.close();
   }

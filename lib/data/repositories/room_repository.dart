@@ -1,6 +1,7 @@
 import 'package:injectable/injectable.dart';
 import 'package:livekit_client/livekit_client.dart';
 import '../../domain/repositories/i_room_repository.dart';
+import '../../core/config/env.dart';
 import '../datasources/api_data_source.dart';
 import '../datasources/livekit_data_source.dart';
 
@@ -9,8 +10,7 @@ class RoomRepository implements IRoomRepository {
   final ApiDataSource _apiDataSource;
   final LiveKitDataSource _liveKitDataSource;
 
-  // URL to LiveKit WS
-  static const String liveKitUrl = 'ws://localhost:7880';
+  final String liveKitUrl = Env.liveKitUrl;
 
   RoomRepository(this._apiDataSource, this._liveKitDataSource);
 

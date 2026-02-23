@@ -1,12 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../theme/app_colors.dart';
-import '../../widgets/custom_bounce_button.dart';
-import '../../widgets/custom_card.dart';
-import '../../widgets/custom_text_field.dart';
+import '../../../theme/app_colors.dart';
+import '../../../widgets/custom_bounce_button.dart';
+import '../../../widgets/custom_card.dart';
+import '../../../widgets/custom_text_field.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../data/datasources/api_data_source.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _roomController = TextEditingController();
+  List<Map<String, dynamic>> _rooms = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRooms();
+  }
+
+  Future<void> _fetchRooms() async {
+    try {
+      final api = getIt<ApiDataSource>();
+      final rooms = await api.fetchRooms();
+      if (mounted) {
+        setState(() {
+          _rooms = rooms;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load rooms: $e')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,21 +62,48 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
               _buildActionSection(context),
               const SizedBox(height: 48),
-              Text(
-                'Active Public Rooms',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondary,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Active Public Rooms',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh, color: AppColors.primary),
+                    onPressed: () {
+                      setState(() => _isLoading = true);
+                      _fetchRooms();
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: ListView.builder(
-                  itemCount: 3, // Dummy data
-                  itemBuilder: (context, index) {
-                    return _buildRoomCard(context, 'Public Room ${index + 1}');
-                  },
-                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _rooms.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No public rooms available.\nCreate one above!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _rooms.length,
+                        itemBuilder: (context, index) {
+                          final room = _rooms[index];
+                          return _buildRoomCard(
+                            context,
+                            room['name'] ?? 'Unknown',
+                            room['hexCode'] ?? '#00AEFF',
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -49,21 +113,29 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildActionSection(BuildContext context) {
-    final controller = TextEditingController();
     return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CustomTextField(controller: controller, hintText: 'Enter Room Name'),
+          CustomTextField(
+            controller: _roomController,
+            hintText: 'Enter Room Name',
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: CustomBounceButton(
                   onPressed: () {
-                    // Navigate to room join logic
-                    if (controller.text.isNotEmpty) {
-                      context.go('/room/${controller.text}');
+                    final roomName = _roomController.text.trim();
+                    if (roomName.isNotEmpty) {
+                      context.go('/room/$roomName');
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please enter a room name to join'),
+                        ),
+                      );
                     }
                   },
                   child: Container(
@@ -88,10 +160,13 @@ class HomeScreen extends StatelessWidget {
               Expanded(
                 child: CustomBounceButton(
                   onPressed: () {
-                    // Navigate to room creation logic
-                    if (controller.text.isNotEmpty) {
-                      context.go('/room/${controller.text}'); // Simplified
+                    var roomName = _roomController.text.trim();
+                    if (roomName.isEmpty) {
+                      // Generate random room name if empty
+                      roomName =
+                          'Room-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
                     }
+                    context.go('/room/$roomName?owner=true');
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -117,7 +192,17 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRoomCard(BuildContext context, String roomName) {
+  Color _hexToColor(String code) {
+    final hexString = code.replaceFirst('#', '');
+    if (hexString.length == 6) {
+      return Color(int.parse('FF$hexString', radix: 16));
+    }
+    return AppColors.primary;
+  }
+
+  Widget _buildRoomCard(BuildContext context, String roomName, String hexCode) {
+    final codeColor = _hexToColor(hexCode);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: CustomBounceButton(
@@ -127,22 +212,55 @@ class HomeScreen extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                roomName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: codeColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        roomName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        'Code: $hexCode',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: codeColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               const Icon(
                 Icons.arrow_forward_ios,
                 size: 16,
-                color: AppColors.primary,
+                color: AppColors.textSecondary,
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _roomController.dispose();
+    super.dispose();
   }
 }
