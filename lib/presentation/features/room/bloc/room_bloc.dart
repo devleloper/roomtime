@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
+import 'package:permission_handler/permission_handler.dart';
 import '../../../../domain/repositories/i_room_repository.dart';
 import 'room_event.dart';
 import 'room_state.dart';
@@ -26,6 +28,19 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   ) async {
     emit(state.copyWith(status: RoomStatus.connecting));
     try {
+      // 1. Explicitly request permissions on Android before connecting to LiveKit
+      if (!kIsWeb) {
+        final cameraStatus = await Permission.camera.request();
+        final micStatus = await Permission.microphone.request();
+
+        if (cameraStatus.isDenied || micStatus.isDenied) {
+          throw Exception(
+            "Camera and Microphone permissions are required to join the room.",
+          );
+        }
+      }
+
+      // 2. Proceed to Connect
       final token = await _roomRepository.getJoinToken(
         event.roomName,
         event.participantName,
@@ -36,7 +51,11 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         if (roomEvent is lk.ParticipantConnectedEvent ||
             roomEvent is lk.ParticipantDisconnectedEvent ||
             roomEvent is lk.TrackSubscribedEvent ||
-            roomEvent is lk.TrackUnsubscribedEvent) {
+            roomEvent is lk.TrackUnsubscribedEvent ||
+            roomEvent is lk.TrackMutedEvent ||
+            roomEvent is lk.TrackUnmutedEvent ||
+            roomEvent is lk.LocalTrackPublishedEvent ||
+            roomEvent is lk.LocalTrackUnpublishedEvent) {
           add(
             RoomParticipantsChanged([
               room.localParticipant!,
@@ -50,6 +69,8 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         state.copyWith(
           status: RoomStatus.connected,
           room: room,
+          isCameraEnabled: true,
+          isMicEnabled: true,
           participants: [
             room.localParticipant!,
             ...room.remoteParticipants.values,
@@ -130,7 +151,12 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     RoomParticipantsChanged event,
     Emitter<RoomState> emit,
   ) {
-    emit(state.copyWith(participants: event.participants));
+    emit(
+      state.copyWith(
+        participants: event.participants,
+        updateCount: state.updateCount + 1,
+      ),
+    );
   }
 
   @override

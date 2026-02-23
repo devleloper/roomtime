@@ -18,7 +18,14 @@ class LiveKitDataSource {
 
     room = Room(roomOptions: roomOptions);
 
-    await room.connect(url, token);
+    await room.connect(
+      url,
+      token,
+      fastConnectOptions: FastConnectOptions(
+        microphone: const TrackOption(enabled: true),
+        camera: const TrackOption(enabled: true),
+      ),
+    );
     return room;
   }
 
@@ -35,13 +42,24 @@ class LiveKitDataSource {
   }
 
   Future<void> switchCamera() async {
-    room.localParticipant?.videoTrackPublications.forEach((pub) async {
-      final track = pub.track;
-      if (track != null) {
-        await track.stop();
+    final trackPublications = room.localParticipant?.videoTrackPublications;
+    if (trackPublications != null) {
+      for (var pub in trackPublications) {
+        if (pub.track is LocalVideoTrack) {
+          final track = pub.track as LocalVideoTrack;
+          final options = track.currentOptions;
+          if (options is CameraCaptureOptions) {
+            final currentFacing = options.cameraPosition;
+            final nextFacing = currentFacing == CameraPosition.front
+                ? CameraPosition.back
+                : CameraPosition.front;
+
+            await track.restartTrack(
+              CameraCaptureOptions(cameraPosition: nextFacing),
+            );
+          }
+        }
       }
-    });
-    // In a real implementation this interacts with hardware, livekit SDK has helper extensions sometimes
-    // For now, restarting with another deviceId would serve as switch.
+    }
   }
 }

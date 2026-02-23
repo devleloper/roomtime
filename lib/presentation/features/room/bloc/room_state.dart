@@ -10,6 +10,7 @@ class RoomState extends Equatable {
   final String? errorMessage;
   final bool isMicEnabled;
   final bool isCameraEnabled;
+  final int updateCount;
 
   const RoomState({
     this.status = RoomStatus.initial,
@@ -18,6 +19,7 @@ class RoomState extends Equatable {
     this.errorMessage,
     this.isMicEnabled = false,
     this.isCameraEnabled = true,
+    this.updateCount = 0,
   });
 
   RoomState copyWith({
@@ -27,6 +29,7 @@ class RoomState extends Equatable {
     String? errorMessage,
     bool? isMicEnabled,
     bool? isCameraEnabled,
+    int? updateCount,
   }) {
     return RoomState(
       status: status ?? this.status,
@@ -35,6 +38,7 @@ class RoomState extends Equatable {
       errorMessage: errorMessage ?? this.errorMessage,
       isMicEnabled: isMicEnabled ?? this.isMicEnabled,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
+      updateCount: updateCount ?? this.updateCount,
     );
   }
 
@@ -46,5 +50,6 @@ class RoomState extends Equatable {
     errorMessage,
     isMicEnabled,
     isCameraEnabled,
+    updateCount,
   ];
 }
