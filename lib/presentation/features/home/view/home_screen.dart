@@ -126,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Expanded(
                 child: CustomBounceButton(
+                  borderRadius: 16,
                   onPressed: () {
                     final roomName = _roomController.text.trim();
                     if (roomName.isNotEmpty) {
@@ -159,6 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 16),
               Expanded(
                 child: CustomBounceButton(
+                  borderRadius: 16,
                   onPressed: () {
                     var roomName = _roomController.text.trim();
                     if (roomName.isEmpty) {
@@ -206,6 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: CustomBounceButton(
+        borderRadius: 24,
         onPressed: () => context.go('/room/$roomName'),
         child: CustomCard(
           padding: const EdgeInsets.all(16),

@@ -75,7 +75,10 @@ class RoomScreen extends StatelessWidget {
       return Stack(
         children: [
           if (remote != null) _buildFullscreenVideo(remote),
-          if (local != null) DraggablePipView(child: _buildVideoView(local)),
+          if (local != null)
+            DraggablePipView(
+              child: _buildVideoView(local, fit: VideoViewFit.cover),
+            ),
         ],
       );
     }
@@ -88,22 +91,52 @@ class RoomScreen extends StatelessWidget {
     return SizedBox.expand(child: _buildVideoView(participant));
   }
 
-  Widget _buildVideoView(Participant participant) {
+  Widget _buildVideoView(
+    Participant participant, {
+    VideoViewFit fit = VideoViewFit.contain,
+  }) {
     final videoTrack =
         participant.videoTrackPublications
-                .firstWhereOrNull((p) => p.track != null)
+                .firstWhereOrNull((p) => p.track != null && !p.muted)
                 ?.track
             as VideoTrack?;
 
+    final isMicMuted = !participant.isMicrophoneEnabled();
+
+    Widget content;
     if (videoTrack != null) {
-      return VideoTrackRenderer(videoTrack);
+      content = VideoTrackRenderer(videoTrack, fit: fit);
+    } else {
+      content = Container(
+        color: AppColors.surface,
+        child: const Center(
+          child: Icon(Icons.videocam_off, size: 64, color: Colors.white24),
+        ),
+      );
     }
 
-    return Container(
-      color: AppColors.surface,
-      child: const Center(
-        child: Icon(Icons.person, size: 64, color: Colors.white24),
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        content,
+        if (isMicMuted)
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.mic_off,
+                size: 20,
+                color: AppColors.error,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -112,7 +145,7 @@ class RoomScreen extends StatelessWidget {
       participants: state.participants,
       activeSpeakers: state.activeSpeakers,
       buildVideoView: (participant, {fit = VideoViewFit.cover}) =>
-          _buildVideoView(participant),
+          _buildVideoView(participant, fit: fit),
     );
   }
 

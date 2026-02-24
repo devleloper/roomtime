@@ -3,15 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
-import 'package:rxdart/rxdart.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../domain/repositories/i_room_repository.dart';
 import 'room_event.dart';
 import 'room_state.dart';
-
-EventTransformer<T> debounce<T>(Duration duration) {
-  return (events, mapper) => events.debounceTime(duration).switchMap(mapper);
-}
 
 @injectable
 class RoomBloc extends Bloc<RoomEvent, RoomState> {
@@ -25,10 +20,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     on<ToggleCamera>(_onToggleCamera);
     on<SwitchCamera>(_onSwitchCamera);
     on<RoomParticipantsChanged>(_onRoomParticipantsChanged);
-    on<ActiveSpeakersChanged>(
-      _onActiveSpeakersChanged,
-      transformer: debounce(const Duration(milliseconds: 300)),
-    );
+    on<ActiveSpeakersChanged>(_onActiveSpeakersChanged);
   }
 
   Future<void> _onConnectToRoom(
