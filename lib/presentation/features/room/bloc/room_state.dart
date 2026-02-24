@@ -10,6 +10,7 @@ class RoomState extends Equatable {
   final String? errorMessage;
   final bool isMicEnabled;
   final bool isCameraEnabled;
+  final bool isFrontCamera;
   final int updateCount;
   final List<Participant> activeSpeakers;
 
@@ -20,6 +21,7 @@ class RoomState extends Equatable {
     this.errorMessage,
     this.isMicEnabled = false,
     this.isCameraEnabled = true,
+    this.isFrontCamera = true,
     this.updateCount = 0,
     this.activeSpeakers = const [],
   });
@@ -31,6 +33,7 @@ class RoomState extends Equatable {
     String? errorMessage,
     bool? isMicEnabled,
     bool? isCameraEnabled,
+    bool? isFrontCamera,
     int? updateCount,
     List<Participant>? activeSpeakers,
   }) {
@@ -41,6 +44,7 @@ class RoomState extends Equatable {
       errorMessage: errorMessage ?? this.errorMessage,
       isMicEnabled: isMicEnabled ?? this.isMicEnabled,
       isCameraEnabled: isCameraEnabled ?? this.isCameraEnabled,
+      isFrontCamera: isFrontCamera ?? this.isFrontCamera,
       updateCount: updateCount ?? this.updateCount,
       activeSpeakers: activeSpeakers ?? this.activeSpeakers,
     );
@@ -54,6 +58,7 @@ class RoomState extends Equatable {
     errorMessage,
     isMicEnabled,
     isCameraEnabled,
+    isFrontCamera,
     updateCount,
     activeSpeakers,
   ];

@@ -1,5 +1,8 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
@@ -12,10 +15,56 @@ import '../bloc/room_bloc.dart';
 import '../bloc/room_event.dart';
 import '../bloc/room_state.dart';
 
-class RoomScreen extends StatelessWidget {
+class RoomScreen extends StatefulWidget {
   final String roomName;
 
   const RoomScreen({super.key, required this.roomName});
+
+  @override
+  State<RoomScreen> createState() => _RoomScreenState();
+}
+
+class _RoomScreenState extends State<RoomScreen> {
+  Timer? _hideTimer;
+  bool _showControls = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _startHideTimer();
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      _startHideTimer();
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      _hideTimer?.cancel();
+    }
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() {
+          _showControls = false;
+        });
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +72,7 @@ class RoomScreen extends StatelessWidget {
       create: (context) => getIt<RoomBloc>()
         ..add(
           ConnectToRoom(
-            roomName: roomName,
+            roomName: widget.roomName,
             participantName: 'User_${DateTime.now().millisecondsSinceEpoch}',
           ),
         ),
@@ -49,7 +98,19 @@ class RoomScreen extends StatelessWidget {
                   bottom: 30,
                   left: 0,
                   right: 0,
-                  child: _buildMediaControls(context, state),
+                  child: AnimatedSlide(
+                    offset: _showControls ? Offset.zero : const Offset(0, 1.5),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: _showControls ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: IgnorePointer(
+                        ignoring: !_showControls,
+                        child: _buildMediaControls(context, state),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -64,7 +125,12 @@ class RoomScreen extends StatelessWidget {
 
     // 1 Participant (Only Local)
     if (state.participants.length == 1) {
-      return _buildFullscreenVideo(state.participants.first);
+      return Stack(
+        children: [
+          _buildFullscreenVideo(state.participants.first),
+          _buildTapOverlay(),
+        ],
+      );
     }
 
     // 2 Participants (1-on-1 Call)
@@ -74,7 +140,15 @@ class RoomScreen extends StatelessWidget {
 
       return Stack(
         children: [
-          if (remote != null) _buildFullscreenVideo(remote),
+          if (remote != null)
+            InteractiveViewer(
+              clipBehavior: Clip.none,
+              panEnabled: false,
+              minScale: 1.0,
+              maxScale: 4.0,
+              child: _buildFullscreenVideo(remote),
+            ),
+          _buildTapOverlay(), // Placed UNDER PiP so PiP dragging works
           if (local != null)
             DraggablePipView(
               child: _buildVideoView(local, fit: VideoViewFit.cover),
@@ -84,7 +158,19 @@ class RoomScreen extends StatelessWidget {
     }
 
     // 3+ Participants (Mission Control Grid)
-    return _buildMissionControlGrid(context, state);
+    return Stack(
+      children: [_buildMissionControlGrid(context, state), _buildTapOverlay()],
+    );
+  }
+
+  Widget _buildTapOverlay() {
+    return Positioned.fill(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _toggleControls,
+        // Also absorb dual touch scale events completely when not intended for InteractiveViewer
+      ),
+    );
   }
 
   Widget _buildFullscreenVideo(Participant participant) {
@@ -115,24 +201,48 @@ class RoomScreen extends StatelessWidget {
       );
     }
 
+    Widget videoContent = content;
+
+    if (participant is LocalParticipant) {
+      videoContent = BlocBuilder<RoomBloc, RoomState>(
+        buildWhen: (prev, curr) => prev.isFrontCamera != curr.isFrontCamera,
+        builder: (context, state) {
+          return _CameraFlipWidget(
+            isFrontCamera: state.isFrontCamera,
+            child: content,
+          );
+        },
+      );
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        content,
+        videoContent,
         if (isMicMuted)
           Positioned(
             bottom: 12,
             right: 12,
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.mic_off,
-                size: 20,
-                color: AppColors.error,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.mic_off,
+                    size: 20,
+                    color: AppColors.error,
+                  ),
+                ),
               ),
             ),
           ),
@@ -191,16 +301,112 @@ class RoomScreen extends StatelessWidget {
     VoidCallback onPressed, {
     Color? color,
   }) {
+    final bgColor =
+        color?.withValues(alpha: 0.4) ??
+        AppColors.surface.withValues(alpha: 0.4);
+
     return CustomBounceButton(
-      onPressed: onPressed,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color ?? AppColors.surface,
-          shape: BoxShape.circle,
+      onPressed: () {
+        _startHideTimer();
+        onPressed();
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(100),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: bgColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 1,
+              ),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(opacity: animation, child: child),
+              child: Icon(
+                icon,
+                key: ValueKey(icon),
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
         ),
-        child: Icon(icon, color: Colors.white, size: 28),
       ),
+    );
+  }
+}
+
+class _CameraFlipWidget extends StatefulWidget {
+  final Widget child;
+  final bool isFrontCamera;
+
+  const _CameraFlipWidget({required this.child, required this.isFrontCamera});
+
+  @override
+  State<_CameraFlipWidget> createState() => _CameraFlipWidgetState();
+}
+
+class _CameraFlipWidgetState extends State<_CameraFlipWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_CameraFlipWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isFrontCamera != oldWidget.isFrontCamera) {
+      _controller.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final curveValue = Curves.easeInOut.transform(_controller.value);
+        final direction = widget.isFrontCamera ? 1.0 : -1.0;
+        double angle;
+
+        if (curveValue <= 0.5) {
+          // 0.0 to 90.0 degrees
+          angle = curveValue * 3.14159265 * direction;
+        } else {
+          // -90.0 to 0.0 degrees
+          angle = (curveValue - 1.0) * 3.14159265 * direction;
+        }
+
+        final transform = Matrix4.identity()
+          ..setEntry(3, 2, 0.0015) // Deep perspective
+          ..rotateY(angle);
+
+        return Transform(
+          alignment: Alignment.center,
+          transform: transform,
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }

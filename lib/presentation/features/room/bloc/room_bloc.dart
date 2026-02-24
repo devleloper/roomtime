@@ -147,6 +147,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     SwitchCamera event,
     Emitter<RoomState> emit,
   ) async {
+    emit(state.copyWith(isFrontCamera: !state.isFrontCamera));
     await _roomRepository.switchCamera();
   }
 
