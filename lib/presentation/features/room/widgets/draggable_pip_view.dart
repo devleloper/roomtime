@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/custom_bounce_button.dart';
 
 class DraggablePipView extends StatefulWidget {
   final Widget child;
@@ -6,6 +7,7 @@ class DraggablePipView extends StatefulWidget {
   final double initialHeight;
   final double minScale;
   final double maxScale;
+  final VoidCallback? onTap;
 
   const DraggablePipView({
     super.key,
@@ -14,6 +16,7 @@ class DraggablePipView extends StatefulWidget {
     this.initialHeight = 160,
     this.minScale = 0.8,
     this.maxScale = 2.5,
+    this.onTap,
   });
 
   @override
@@ -120,10 +123,11 @@ class _DraggablePipViewState extends State<DraggablePipView>
     // Correct initial position on first build
     final size = MediaQuery.of(context).size;
     final currentWidth = widget.initialWidth * _scale;
+    final currentHeight = widget.initialHeight * _scale;
     if (_position.dx > size.width) {
       _position = Offset(
         size.width - currentWidth - 16,
-        MediaQuery.of(context).padding.top + 16,
+        size.height - currentHeight - 116,
       );
     }
 
@@ -135,23 +139,29 @@ class _DraggablePipViewState extends State<DraggablePipView>
         onScaleStart: _onScaleStart,
         onScaleUpdate: _onScaleUpdate,
         onScaleEnd: _onScaleEnd,
-        child: Container(
-          width: widget.initialWidth * _scale,
-          height: widget.initialHeight * _scale,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            clipBehavior: Clip.hardEdge,
-            child: IgnorePointer(child: widget.child),
+        child: CustomBounceButton(
+          onPressed: widget.onTap ?? () {},
+          borderRadius: 16,
+          overlayOpacity: 0.1,
+          scaleFactor: 1.05, // Slight pop instead of shrink
+          child: Container(
+            width: widget.initialWidth * _scale,
+            height: widget.initialHeight * _scale,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.hardEdge,
+              child: IgnorePointer(child: widget.child),
+            ),
           ),
         ),
       ),

@@ -26,6 +26,7 @@ class RoomScreen extends StatefulWidget {
 
 class _RoomScreenState extends State<RoomScreen> {
   Timer? _hideTimer;
+  Participant? _pinnedParticipant;
   bool _showControls = true;
 
   @override
@@ -127,7 +128,11 @@ class _RoomScreenState extends State<RoomScreen> {
     if (state.participants.length == 1) {
       return Stack(
         children: [
-          _buildFullscreenVideo(state.participants.first),
+          _buildFullscreenVideo(
+            state.participants.first,
+            fit: VideoViewFit.cover,
+            showMicIcon: false,
+          ),
           _buildTapOverlay(),
         ],
       );
@@ -138,21 +143,57 @@ class _RoomScreenState extends State<RoomScreen> {
       final local = state.room?.localParticipant;
       final remote = state.participants.firstWhereOrNull((p) => p != local);
 
+      Participant fullscreenParticipant = remote ?? state.participants.first;
+      Participant pipParticipant = local ?? state.participants.last;
+
+      if (_pinnedParticipant != null &&
+          state.participants.contains(_pinnedParticipant)) {
+        fullscreenParticipant = _pinnedParticipant!;
+        pipParticipant = state.participants.firstWhere(
+          (p) => p != _pinnedParticipant,
+        );
+      }
+
+      final isLocalFullscreen = fullscreenParticipant == local;
+      final fullscreenFit = isLocalFullscreen
+          ? VideoViewFit.cover
+          : VideoViewFit.contain;
+
       return Stack(
         children: [
-          if (remote != null)
-            InteractiveViewer(
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            transitionBuilder: _buildSwapTransition,
+            child: InteractiveViewer(
+              key: ValueKey(fullscreenParticipant.sid),
               clipBehavior: Clip.none,
               panEnabled: false,
               minScale: 1.0,
               maxScale: 4.0,
-              child: _buildFullscreenVideo(remote),
+              child: _buildFullscreenVideo(
+                fullscreenParticipant,
+                fit: fullscreenFit,
+                showMicIcon: !isLocalFullscreen,
+              ),
             ),
+          ),
           _buildTapOverlay(), // Placed UNDER PiP so PiP dragging works
-          if (local != null)
-            DraggablePipView(
-              child: _buildVideoView(local, fit: VideoViewFit.cover),
+          DraggablePipView(
+            onTap: () {
+              setState(() {
+                _pinnedParticipant = pipParticipant;
+              });
+            },
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              transitionBuilder: _buildSwapTransition,
+              child: _buildVideoView(
+                pipParticipant,
+                key: ValueKey(pipParticipant.sid),
+                fit: VideoViewFit.cover,
+              ),
             ),
+          ),
         ],
       );
     }
@@ -160,6 +201,17 @@ class _RoomScreenState extends State<RoomScreen> {
     // 3+ Participants (Mission Control Grid)
     return Stack(
       children: [_buildMissionControlGrid(context, state), _buildTapOverlay()],
+    );
+  }
+
+  Widget _buildSwapTransition(Widget child, Animation<double> animation) {
+    final scaleAnimation = Tween<double>(
+      begin: 0.95,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+    return FadeTransition(
+      opacity: animation,
+      child: ScaleTransition(scale: scaleAnimation, child: child),
     );
   }
 
@@ -173,13 +225,21 @@ class _RoomScreenState extends State<RoomScreen> {
     );
   }
 
-  Widget _buildFullscreenVideo(Participant participant) {
-    return SizedBox.expand(child: _buildVideoView(participant));
+  Widget _buildFullscreenVideo(
+    Participant participant, {
+    VideoViewFit fit = VideoViewFit.contain,
+    bool showMicIcon = true,
+  }) {
+    return SizedBox.expand(
+      child: _buildVideoView(participant, fit: fit, showMicIcon: showMicIcon),
+    );
   }
 
   Widget _buildVideoView(
     Participant participant, {
+    Key? key,
     VideoViewFit fit = VideoViewFit.contain,
+    bool showMicIcon = true,
   }) {
     final videoTrack =
         participant.videoTrackPublications
@@ -215,38 +275,77 @@ class _RoomScreenState extends State<RoomScreen> {
       );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        videoContent,
-        if (isMicMuted)
-          Positioned(
-            bottom: 12,
-            right: 12,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(100),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      width: 1,
+    return LayoutBuilder(
+      key: key,
+      builder: (context, constraints) {
+        final screenAR = constraints.maxWidth / constraints.maxHeight;
+
+        // Extract native video aspect ratio
+        double videoAR = 1.0;
+        bool hasVideo =
+            videoTrack != null && participant.videoTrackPublications.isNotEmpty;
+        if (hasVideo) {
+          final pub = participant.videoTrackPublications.firstWhereOrNull(
+            (p) => p.track == videoTrack,
+          );
+          if (pub != null && pub.dimensions != null) {
+            final w = pub.dimensions!.width;
+            final h = pub.dimensions!.height;
+            if (h > 0 && w > 0) videoAR = w / h;
+          }
+        }
+
+        // Calculate letterboxing based on fit
+        double renderedWidth = constraints.maxWidth;
+        double renderedHeight = constraints.maxHeight;
+
+        if (fit == VideoViewFit.contain && hasVideo) {
+          if (screenAR > videoAR) {
+            // Screen is wider than video (pillarboxing on sides)
+            renderedWidth = constraints.maxHeight * videoAR;
+          } else {
+            // Screen is taller than video (letterboxing on top/bottom)
+            renderedHeight = constraints.maxWidth / videoAR;
+          }
+        }
+
+        final horizontalPadding = (constraints.maxWidth - renderedWidth) / 2;
+        final verticalPadding = (constraints.maxHeight - renderedHeight) / 2;
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            videoContent,
+            if (isMicMuted && showMicIcon)
+              Positioned(
+                bottom: verticalPadding + 12,
+                right: horizontalPadding + 12,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(100),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.mic_off,
+                        size: 20,
+                        color: AppColors.error,
+                      ),
                     ),
-                  ),
-                  child: const Icon(
-                    Icons.mic_off,
-                    size: 20,
-                    color: AppColors.error,
                   ),
                 ),
               ),
-            ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
 
