@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 
@@ -59,11 +58,6 @@ class _CameraBackgroundViewState extends State<CameraBackgroundView> {
               fit: StackFit.expand,
               children: [
                 VideoTrackRenderer(_videoTrack!, fit: VideoViewFit.cover),
-                // Glassmorphism heavy blur and darkening overlay
-                BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                  child: Container(color: Colors.black.withValues(alpha: 0.6)),
-                ),
               ],
             ),
     );

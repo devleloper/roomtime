@@ -36,8 +36,8 @@ class _DraggablePipViewState extends State<DraggablePipView>
   void initState() {
     super.initState();
     _scale = 1.0;
-    // Start at top right corner with some padding
-    _position = const Offset(1000, 100); // Will be corrected on first build
+    // Start with a large offset so it gets clamped to the bottom-right corner
+    _position = const Offset(10000, 10000); // Will be corrected on first build
 
     _animationController = AnimationController(
       vsync: this,
@@ -120,16 +120,22 @@ class _DraggablePipViewState extends State<DraggablePipView>
 
   @override
   Widget build(BuildContext context) {
-    // Correct initial position on first build
+    // Continuously enforce boundaries on every build to handle screen rotations
     final size = MediaQuery.of(context).size;
     final currentWidth = widget.initialWidth * _scale;
     final currentHeight = widget.initialHeight * _scale;
-    if (_position.dx > size.width) {
-      _position = Offset(
-        size.width - currentWidth - 16,
-        size.height - currentHeight - 116,
-      );
-    }
+
+    const padding = 16.0;
+    final minX = padding;
+    final maxX = size.width - currentWidth - padding;
+    final minY = padding + MediaQuery.of(context).padding.top;
+    final maxY =
+        size.height - currentHeight - padding - 100; // 100 for media controls
+
+    _position = Offset(
+      _position.dx.clamp(minX, maxX),
+      _position.dy.clamp(minY, maxY),
+    );
 
     return Positioned(
       left: _position.dx,
