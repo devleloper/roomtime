@@ -30,6 +30,11 @@ class LiveKitDataSource {
   }
 
   Future<void> disconnect() async {
+    final participant = room.localParticipant;
+    if (participant != null) {
+      await participant.unpublishAllTracks();
+    }
+
     await room.disconnect();
   }
 

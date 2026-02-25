@@ -15,7 +15,11 @@ class _CameraBackgroundViewState extends State<CameraBackgroundView> {
   @override
   void initState() {
     super.initState();
-    _initCamera();
+    // Delay initialization to avoid blocking the route transition animation
+    // and to ensure any previous Room instance has finished disconnecting
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) _initCamera();
+    });
   }
 
   Future<void> _initCamera() async {
@@ -35,27 +39,33 @@ class _CameraBackgroundViewState extends State<CameraBackgroundView> {
 
   @override
   void dispose() {
-    _videoTrack?.stop();
-    _videoTrack?.dispose();
+    final track = _videoTrack;
+    if (track != null) {
+      // Stop and dispose immediately to release hardware locks for the next screen
+      track.stop();
+      track.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_videoTrack == null) {
-      return Container(color: Colors.black);
-    }
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        VideoTrackRenderer(_videoTrack!, fit: VideoViewFit.cover),
-        // Glassmorphism heavy blur and darkening overlay
-        BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-          child: Container(color: Colors.black.withValues(alpha: 0.6)),
-        ),
-      ],
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      child: _videoTrack == null
+          ? Container(key: const ValueKey('placeholder'), color: Colors.black)
+          : Stack(
+              key: const ValueKey('camera'),
+              fit: StackFit.expand,
+              children: [
+                VideoTrackRenderer(_videoTrack!, fit: VideoViewFit.cover),
+                // Glassmorphism heavy blur and darkening overlay
+                BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                  child: Container(color: Colors.black.withValues(alpha: 0.6)),
+                ),
+              ],
+            ),
     );
   }
 }

@@ -46,6 +46,11 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         event.roomName,
         event.participantName,
       );
+
+      // Yield to the event loop to ensure the CircularProgressIndicator
+      // has time to render and animate smoothly before heavy C++ bindings block
+      await Future.delayed(const Duration(milliseconds: 150));
+
       final room = await _roomRepository.connectToRoom(token);
 
       _roomListener = room.createListener().on<lk.RoomEvent>((roomEvent) {
@@ -182,7 +187,8 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     }
     final room = state.room;
     if (room != null) {
-      await room.disconnect();
+      // Disconnect immediately to release hardware locks for the next screen
+      room.disconnect();
     }
     return super.close();
   }

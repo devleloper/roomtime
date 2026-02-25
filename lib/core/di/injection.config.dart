@@ -19,6 +19,7 @@ import '../../data/repositories/room_repository.dart' as _i393;
 import '../../domain/repositories/i_auth_repository.dart' as _i841;
 import '../../domain/repositories/i_room_repository.dart' as _i80;
 import '../../presentation/features/auth/bloc/auth_bloc.dart' as _i379;
+import '../../presentation/features/home/bloc/home_bloc.dart' as _i635;
 import '../../presentation/features/room/bloc/room_bloc.dart' as _i1033;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -39,6 +40,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i841.IAuthRepository>(
       () => _i481.AuthRepository(gh<_i882.ApiDataSource>()),
     );
+    gh.factory<_i635.HomeBloc>(() => _i635.HomeBloc(gh<_i882.ApiDataSource>()));
     gh.factory<_i1033.RoomBloc>(
       () => _i1033.RoomBloc(gh<_i80.IRoomRepository>()),
     );

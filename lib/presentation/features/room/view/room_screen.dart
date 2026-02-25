@@ -70,24 +70,39 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<RoomBloc>()
-        ..add(
-          ConnectToRoom(
-            roomName: widget.roomName,
-            participantName: 'User_${DateTime.now().millisecondsSinceEpoch}',
-          ),
-        ),
+      create: (context) {
+        final bloc = getIt<RoomBloc>();
+        // Delay heavy C++ WebRTC connection logic to allow route push transition (300ms) to complete
+        Future.delayed(const Duration(milliseconds: 350), () {
+          if (!bloc.isClosed) {
+            bloc.add(
+              ConnectToRoom(
+                roomName: widget.roomName,
+                participantName:
+                    'User_${DateTime.now().millisecondsSinceEpoch}',
+              ),
+            );
+          }
+        });
+        return bloc;
+      },
       child: BlocBuilder<RoomBloc, RoomState>(
         builder: (context, state) {
           return Scaffold(
             backgroundColor: Colors.black,
             body: Stack(
               children: [
-                _buildVideoLayout(context, state),
                 if (state.status == RoomStatus.connecting)
-                  const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
+                  Container(
+                    color: Colors.black,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  )
+                else
+                  _buildVideoLayout(context, state),
                 if (state.status == RoomStatus.error)
                   Center(
                     child: Text(
@@ -251,7 +266,11 @@ class _RoomScreenState extends State<RoomScreen> {
 
     Widget content;
     if (videoTrack != null) {
-      content = VideoTrackRenderer(videoTrack, fit: fit);
+      content = VideoTrackRenderer(
+        videoTrack,
+        fit: fit,
+        key: ValueKey('${participant.sid}_${videoTrack.sid}'),
+      );
     } else {
       content = Container(
         color: AppColors.surface,
@@ -384,7 +403,13 @@ class _RoomScreenState extends State<RoomScreen> {
         ),
         const SizedBox(width: 20),
         _buildMediaButton(Icons.call_end, () {
-          context.read<RoomBloc>().add(DisconnectRoom());
+          // Immediately disable camera and mic to clear hardware lights/audio instantly
+          final bloc = context.read<RoomBloc>();
+          bloc.add(ToggleMicrophone(false));
+          bloc.add(ToggleCamera(false));
+
+          // BLoC disposes the room asynchronously upon Provider tear-down,
+          // instantly pop to avoid transition jank.
           if (context.canPop()) {
             context.pop();
           } else {
