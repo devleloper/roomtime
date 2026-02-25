@@ -111,6 +111,62 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                   ),
                 Positioned(
+                  top: MediaQuery.of(context).padding.top + 16,
+                  left: 0,
+                  right: 0,
+                  child: AnimatedSlide(
+                    offset: _showControls ? Offset.zero : const Offset(0, -1.5),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: _showControls ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: IgnorePointer(
+                        ignoring: !_showControls,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                  sigmaX: 12,
+                                  sigmaY: 12,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    widget.roomName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
                   bottom: 30,
                   left: 0,
                   right: 0,

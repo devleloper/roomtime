@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -47,14 +48,39 @@ class _HomeScreenState extends State<HomeScreen> {
                                 letterSpacing: -0.5,
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.refresh,
-                                color: Colors.white,
-                              ),
+                            CustomBounceButton(
                               onPressed: () {
                                 context.read<HomeBloc>().add(FetchRooms());
                               },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(100),
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 12,
+                                    sigmaY: 12,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.refresh,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
