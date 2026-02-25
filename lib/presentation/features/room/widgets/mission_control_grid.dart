@@ -49,13 +49,15 @@ class MissionControlGrid extends StatelessWidget {
           rows = (totalParticipants / 3).ceil();
         }
 
-        // Base width if no active speaker sizing is applied
-        final baseWidth = constraints.maxWidth / columns;
+        // We need a fallback algorithm that tries to maximize usage of the space
+        // while remaining inside constraints.
 
         return Center(
           child: Wrap(
             alignment: WrapAlignment.center,
             runAlignment: WrapAlignment.center,
+            spacing: 8.0,
+            runSpacing: 8.0,
             children: participants.map((participant) {
               final isActive = activeSpeakers.contains(participant);
 
@@ -63,7 +65,8 @@ class MissionControlGrid extends StatelessWidget {
                   .where((p) => p.track != null)
                   .firstOrNull;
 
-              double aspectRatio = 1.0; // Fallback to square
+              // Extract actual video dimensions from WebRTC track
+              double aspectRatio = 16 / 9; // Fallback to landscape by default
               if (activeTrackPub != null && activeTrackPub.dimensions != null) {
                 final w = activeTrackPub.dimensions!.width;
                 final h = activeTrackPub.dimensions!.height;
@@ -72,49 +75,44 @@ class MissionControlGrid extends StatelessWidget {
                 }
               }
 
-              // Apply strict boundaries first
-              final maxWidthClamp = constraints.maxWidth - 16;
-              final maxHeightClamp =
-                  (constraints.maxHeight / (rows > 0 ? rows : 1)) - 16;
+              // Compute the maximum available tile bounds (accounting for spacing)
+              final maxTileWidth = (constraints.maxWidth / columns) - 8.0;
+              final maxTileHeight =
+                  (constraints.maxHeight / (rows > 0 ? rows : 1)) - 8.0;
 
-              // Determine raw dimensions using baseWidth
-              double targetWidth = baseWidth;
-
-              if (activeSpkCount > 0) {
-                if (isActive) {
-                  targetWidth = baseWidth * 1.05;
-                } else {
-                  targetWidth = baseWidth * 0.95;
-                }
-              }
-
-              targetWidth -= 16; // apply margins/padding early
-
-              // Calculate ideal height to maintain exactly the video's aspect ratio
+              // Start by attempting to fill the width
+              double targetWidth = maxTileWidth;
               double targetHeight = targetWidth / aspectRatio;
 
-              // If the height exceeds our safe bounds, constrain height and shrink width
-              if (targetHeight > maxHeightClamp) {
-                targetHeight = maxHeightClamp;
+              // If filling the width makes it too tall, constrain by height instead
+              if (targetHeight > maxTileHeight) {
+                targetHeight = maxTileHeight;
                 targetWidth = targetHeight * aspectRatio;
               }
 
-              // Also ensure targetWidth didn't exceed constraints
-              if (targetWidth > maxWidthClamp) {
-                targetWidth = maxWidthClamp;
-                targetHeight = targetWidth / aspectRatio;
+              // Active Speaker Inflation System
+              if (activeSpkCount > 0) {
+                if (isActive) {
+                  targetWidth *= 1.05;
+                  targetHeight *= 1.05;
+                } else {
+                  targetWidth *= 0.95;
+                  targetHeight *= 0.95;
+                }
               }
 
-              // Final safety clamp for bad aspect ratios
-              targetWidth = targetWidth.clamp(100.0, maxWidthClamp);
-              targetHeight = targetHeight.clamp(100.0, constraints.maxHeight);
+              // Final clamp to ensure we never break out of the parent LayoutBuilder bounds
+              targetWidth = targetWidth.clamp(50.0, constraints.maxWidth - 8.0);
+              targetHeight = targetHeight.clamp(
+                50.0,
+                constraints.maxHeight - 8.0,
+              );
 
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 400),
                 curve: Curves.fastOutSlowIn,
                 width: targetWidth,
                 height: targetHeight,
-                padding: const EdgeInsets.all(4.0),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
@@ -136,7 +134,10 @@ class MissionControlGrid extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: buildVideoView(participant, fit: VideoViewFit.cover),
+                    child: buildVideoView(
+                      participant,
+                      fit: VideoViewFit.contain,
+                    ),
                   ),
                 ),
               );
