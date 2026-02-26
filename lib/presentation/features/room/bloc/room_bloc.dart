@@ -29,8 +29,10 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   ) async {
     emit(state.copyWith(status: RoomStatus.connecting));
     try {
-      // 1. Explicitly request permissions on Android before connecting to LiveKit
-      if (!kIsWeb) {
+      // 1. Explicitly request permissions on Android/iOS before connecting to LiveKit
+      if (!kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)) {
         final cameraStatus = await Permission.camera.request();
         final micStatus = await Permission.microphone.request();
 
