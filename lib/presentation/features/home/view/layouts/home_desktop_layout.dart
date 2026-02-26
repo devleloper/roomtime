@@ -20,70 +20,76 @@ class HomeDesktopLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Sidebar panel with frosted glass
-        SizedBox(
-          width: 380,
-          child: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Container(
-                color: AppColors.surface.withValues(alpha: 0.5),
-                child: SafeArea(
-                  right: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Text(
-                              'FamilyCalls',
-                              style: TextStyle(
-                                fontSize: 28, // Proportional to mobile's 34
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: -0.5,
-                              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          children: [
+            // Sidebar panel with frosted glass
+            SizedBox(
+              width: constraints.maxWidth > 380 ? 380 : constraints.maxWidth,
+              child: ClipRect(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    child: SafeArea(
+                      right: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 42, 24, 24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'FamilyCalls',
+                                  style: TextStyle(
+                                    fontSize: 28, // Proportional to mobile's 34
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // Using the exact same button style as mobile
+                                _buildActionSection(context),
+                              ],
                             ),
-                            const SizedBox(height: 24),
-                            // Using the exact same button style as mobile
-                            _buildActionSection(context),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Rooms',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0,
                             ),
-                            _buildRefreshButton(context),
-                          ],
-                        ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Rooms',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                _buildRefreshButton(context),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(child: _buildRoomsList(context)),
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Expanded(child: _buildRoomsList(context)),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-        // Empty space for the sharp camera view
-        Expanded(child: Container()),
-      ],
+            // Empty space for the sharp camera view
+            Expanded(child: Container()),
+          ],
+        );
+      },
     );
   }
 

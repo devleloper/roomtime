@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection.dart';
@@ -24,6 +25,10 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (context, state) {
           final rooms = state.rooms.reversed.toList(); // Newest first
 
+          final isPhone =
+              defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.android;
+
           return Scaffold(
             backgroundColor: Colors.black,
             body: Stack(
@@ -31,13 +36,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Positioned.fill(child: CameraBackgroundView()),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final isDesktop = constraints.maxWidth > 600;
+                    final isTabletOrDesktop = constraints.maxWidth > 600;
 
-                    if (isDesktop) {
-                      return HomeDesktopLayout(state: state, rooms: rooms);
+                    if (isPhone && !isTabletOrDesktop) {
+                      return HomeMobileLayout(state: state, rooms: rooms);
                     }
 
-                    return HomeMobileLayout(state: state, rooms: rooms);
+                    return HomeDesktopLayout(state: state, rooms: rooms);
                   },
                 ),
               ],

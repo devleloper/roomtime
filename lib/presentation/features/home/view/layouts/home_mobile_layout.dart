@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -31,7 +32,12 @@ class HomeMobileLayout extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 16),
+                SizedBox(
+                  height:
+                      (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS)
+                      ? 48
+                      : 16,
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -199,7 +205,6 @@ class HomeMobileLayout extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.info_outline, color: AppColors.primary, size: 24),
           ],
         ),
       ),
