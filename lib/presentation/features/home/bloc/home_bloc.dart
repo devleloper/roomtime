@@ -14,11 +14,18 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   Future<void> _onFetchRooms(FetchRooms event, Emitter<HomeState> emit) async {
+    print('HomeBloc: _onFetchRooms - Started');
     emit(state.copyWith(status: HomeStatus.loading));
     try {
+      print('HomeBloc: _onFetchRooms - Requesting rooms from ApiDataSource...');
       final rooms = await _apiDataSource.fetchRooms();
+      print(
+        'HomeBloc: _onFetchRooms - Successfully fetched ${rooms.length} rooms',
+      );
       emit(state.copyWith(status: HomeStatus.success, rooms: rooms));
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('HomeBloc: _onFetchRooms - Error fetching rooms: $e');
+      print('HomeBloc: _onFetchRooms - StackTrace: $stackTrace');
       emit(
         state.copyWith(status: HomeStatus.failure, errorMessage: e.toString()),
       );
