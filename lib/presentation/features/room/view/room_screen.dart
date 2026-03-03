@@ -24,7 +24,7 @@ class RoomScreen extends StatefulWidget {
   State<RoomScreen> createState() => _RoomScreenState();
 }
 
-class _RoomScreenState extends State<RoomScreen> {
+class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   Timer? _hideTimer;
   Participant? _pinnedParticipant;
   bool _showControls = true;
@@ -32,14 +32,38 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startHideTimer();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
+  }
+
+  /// Camera privacy: disable camera when app goes to background.
+  /// Prevents video leak when user switches apps or locks device.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+    try {
+      final bloc = context.read<RoomBloc>();
+      if (bloc.isClosed) return;
+
+      if (state == AppLifecycleState.paused ||
+          state == AppLifecycleState.hidden) {
+        // Mute camera when app goes to background (privacy)
+        bloc.add(ToggleCamera(false));
+      } else if (state == AppLifecycleState.resumed) {
+        // Re-enable camera when app returns to foreground
+        bloc.add(ToggleCamera(true));
+      }
+    } catch (_) {
+      // BlocProvider not available (e.g. during route transition)
+    }
   }
 
   void _toggleControls() {
