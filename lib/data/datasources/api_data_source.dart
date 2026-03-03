@@ -19,18 +19,13 @@ class ApiDataSource {
   Future<void> _ensureE2EEInitialized() async {
     if (E2EeClient.isInitialized) return;
 
-    try {
-      // Fetch server public key (this endpoint is unencrypted)
-      final response = await _dio.get('/keys/public');
-      if (response.statusCode == 200) {
-        final key = response.data['server_public_key'] as String;
-        await E2EeClient.setServerPublicKey(key);
-      } else {
-        throw Exception('Failed to fetch server public key for E2EE');
-      }
-    } catch (e, stackTrace) {
-      print('🚨 REAL NETWORK ERROR (_ensureE2EEInitialized): $e\n$stackTrace');
-      rethrow;
+    // Fetch server public key (this endpoint is unencrypted)
+    final response = await _dio.get('/keys/public');
+    if (response.statusCode == 200) {
+      final key = response.data['server_public_key'] as String;
+      await E2EeClient.setServerPublicKey(key);
+    } else {
+      throw Exception('Failed to fetch server public key for E2EE');
     }
   }
 
@@ -144,20 +139,14 @@ class ApiDataSource {
       } else {
         throw Exception('Failed to get token: ${response.data}');
       }
-    } on DioException catch (e, stackTrace) {
-      print(
-        '🚨 REAL NETWORK ERROR (fetchToken DioException): ${e.error ?? e}\n$stackTrace',
-      );
+    } on DioException catch (e) {
       if (e.type == DioExceptionType.badCertificate) {
         throw Exception(
           'SSL certificate verification failed. '
           'Possible MITM attack detected.',
         );
       }
-      throw Exception('Network error: ${e.message} (Real error: ${e.error})');
-    } catch (e, stackTrace) {
-      print('🚨 REAL NETWORK ERROR (fetchToken): $e\n$stackTrace');
-      rethrow;
+      throw Exception('Network error: ${e.message}');
     }
   }
 
@@ -186,14 +175,8 @@ class ApiDataSource {
       } else {
         throw Exception('Failed to fetch rooms: ${response.data}');
       }
-    } on DioException catch (e, stackTrace) {
-      print(
-        '🚨 REAL NETWORK ERROR (fetchRooms DioException): ${e.error ?? e}\n$stackTrace',
-      );
-      throw Exception('Network error: ${e.message} (Real error: ${e.error})');
-    } catch (e, stackTrace) {
-      print('🚨 REAL NETWORK ERROR (fetchRooms): $e\n$stackTrace');
-      rethrow;
+    } on DioException catch (e) {
+      throw Exception('Network error: ${e.message}');
     }
   }
 }

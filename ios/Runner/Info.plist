@@ -70,5 +70,7 @@
 	<string>$(PRODUCT_NAME) requires access to the camera to transmit your video in rooms.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>$(PRODUCT_NAME) requires access to the microphone to transmit your audio in rooms.</string>
+	<key>NSCameraUseContinuityCameraDeviceType</key>
+	<true/>
 </dict>
 </plist>
