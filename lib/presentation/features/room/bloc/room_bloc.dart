@@ -187,11 +187,8 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     if (_roomListener != null) {
       _roomListener!();
     }
-    final room = state.room;
-    if (room != null) {
-      // Disconnect immediately to release hardware locks for the next screen
-      room.disconnect();
-    }
+    // Ensure data source cleans up token and room reference
+    await _roomRepository.disconnectFromRoom();
     return super.close();
   }
 }
