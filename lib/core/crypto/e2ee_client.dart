@@ -44,12 +44,13 @@ class E2EeClient {
     );
 
     // 2. HKDF-SHA256: Derive AES key (32 bytes)
+    // Info provides domain separation — MUST match Go server's DeriveAESKey info param
     final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
     _aesKey = await hkdf.deriveKey(
       secretKey: _sharedSecret!,
       nonce:
-          [], // Go's hkdf.New(sha256.New, secret, nil, nil) uses empty salt/info
-      info: [],
+          [], // salt — nil on Go side (acceptable per RFC 5869 for high-entropy IKM)
+      info: utf8.encode('familycalls-e2ee-v1'), // domain separation
     );
   }
 
