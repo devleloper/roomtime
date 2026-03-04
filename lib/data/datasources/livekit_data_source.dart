@@ -16,18 +16,84 @@ class LiveKitDataSource {
     // Store token in memory only (for potential reconnect)
     _currentToken = token;
 
-    final roomOptions = const RoomOptions(
+    // ── Production-grade WebRTC Configuration ─────────────────
+    //
+    // H.264: Uses hardware encoder on all iOS/Android devices (VideoToolbox / MediaCodec).
+    //   VP8 = software-only on mobile → CPU saturation → frame drops every 2-4s.
+    //   H.264 offloads to dedicated ASIC → near-zero CPU for encoding.
+    //
+    // Simulcast layers: SFU receives 3 quality streams simultaneously.
+    //   Subscribers dynamically switch layers based on their bandwidth/viewport.
+    //   This is how Zoom/Meet handle variable network conditions.
+    //
+    // DegradationPreference.maintainFramerate: Under network congestion,
+    //   WebRTC will drop RESOLUTION before FRAMERATE. This prevents the
+    //   "slideshow" effect — video stays smooth but lower-res.
+    //
+    // Opus RED (Redundant Audio Data): Each audio packet contains a copy of
+    //   the previous frame. If a packet is lost, the receiver can reconstruct
+    //   audio from the redundant data → eliminates audio glitches on lossy mobile networks.
+    //
+    // DTX (Discontinuous Transmission): Stops sending audio packets during silence.
+    //   Saves ~30 kbps per silent participant in group calls.
+    //
+    // AEC/AGC/NoiseSuppression: Hardware-accelerated audio processing.
+    //   Eliminates echo from phone speakers, normalizes volume across devices,
+    //   and filters background noise (keyboard, fan, street).
+
+    final roomOptions = RoomOptions(
       adaptiveStream: true,
       dynacast: true,
-      defaultVideoPublishOptions: VideoPublishOptions(
+
+      // ── Video: H.264 hardware codec + simulcast ──
+      defaultVideoPublishOptions: const VideoPublishOptions(
+        videoCodec: 'h264',
         simulcast: true,
-        // ── Bandwidth limits (anti-resource-exhaustion) ──
         videoEncoding: VideoEncoding(
-          maxBitrate: 1700000, // 1.7 Mbps cap
+          maxBitrate: 1_700_000, // 1.7 Mbps — top layer (720p)
           maxFramerate: 30,
         ),
+        // Explicit simulcast layers for consistent behavior across devices
+        videoSimulcastLayers: [
+          VideoParameters(
+            dimensions: VideoDimensionsPresets.h180_169,
+            encoding: VideoEncoding(maxBitrate: 200_000, maxFramerate: 15),
+          ),
+          VideoParameters(
+            dimensions: VideoDimensionsPresets.h360_169,
+            encoding: VideoEncoding(maxBitrate: 600_000, maxFramerate: 25),
+          ),
+        ],
+        // VP8 as fallback for browsers that don't support H.264
+        backupVideoCodec: BackupVideoCodec(
+          enabled: true,
+          codec: 'vp8',
+          simulcast: true,
+        ),
+        // Under congestion: drop resolution, keep framerate smooth
+        degradationPreference: DegradationPreference.maintainFramerate,
       ),
-      defaultCameraCaptureOptions: CameraCaptureOptions(maxFrameRate: 30),
+
+      // ── Audio: Opus with RED + DTX + hardware processing ──
+      defaultAudioPublishOptions: const AudioPublishOptions(
+        dtx: true, // save bandwidth during silence
+        red: true, // redundant audio data — protects against packet loss
+      ),
+
+      // ── Audio capture: hardware AEC/AGC/NS ──
+      defaultAudioCaptureOptions: const AudioCaptureOptions(
+        echoCancellation: true,
+        autoGainControl: true,
+        noiseSuppression: true,
+        highPassFilter: true, // removes low-frequency rumble (AC, traffic)
+      ),
+
+      // ── Camera: 720p @ 30fps from front camera ──
+      defaultCameraCaptureOptions: const CameraCaptureOptions(
+        maxFrameRate: 30,
+        cameraPosition: CameraPosition.front,
+        params: VideoParametersPresets.h720_169,
+      ),
     );
 
     _room = Room(roomOptions: roomOptions);
