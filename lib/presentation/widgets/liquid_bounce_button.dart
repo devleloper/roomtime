@@ -73,7 +73,7 @@ class _LiquidBounceButtonState extends State<LiquidBounceButton>
 
   @override
   Widget build(BuildContext context) {
-    // Determine whether to use the advanced LiquidGlass renderer
+    // Determine renderer based on platform
     final bool useLiquid =
         !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.macOS ||
@@ -116,7 +116,7 @@ class _LiquidBounceButtonState extends State<LiquidBounceButton>
     final glassContent = ClipRRect(
       borderRadius: BorderRadius.circular(100),
       child: useLiquid
-          // ─── APPLE DEVICES: LIQUID GLASS ───
+          // Apple specific FakeGlass rendering
           ? FakeGlass(
               shape: LiquidOval(
                 side: BorderSide(
@@ -130,7 +130,7 @@ class _LiquidBounceButtonState extends State<LiquidBounceButton>
               ),
               child: innerContent,
             )
-          // ─── OTHER PLATFORMS: STANDARD BACKDROP GLASS ───
+          // Cross-platform BackdropFilter fallback
           : BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
               child: Container(

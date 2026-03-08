@@ -34,7 +34,7 @@ class LiquidGlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine whether to use the advanced LiquidGlass renderer
+    // Determine renderer based on platform
     final bool useLiquid =
         !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.macOS ||
@@ -49,7 +49,7 @@ class LiquidGlassContainer extends StatelessWidget {
     Widget innerContent = Padding(padding: padding, child: child);
 
     if (useLiquid) {
-      // ─── APPLE DEVICES: LIQUID GLASS ───
+      // Apple specific FakeGlass rendering
       return FakeGlass(
         shape: LiquidRoundedRectangle(
           borderRadius: borderRadius,
@@ -67,7 +67,7 @@ class LiquidGlassContainer extends StatelessWidget {
       );
     }
 
-    // ─── OTHER PLATFORMS: STANDARD BACKDROP GLASS ───
+    // Cross-platform BackdropFilter fallback
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: BackdropFilter(

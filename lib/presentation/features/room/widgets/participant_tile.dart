@@ -6,12 +6,14 @@ class ParticipantTile extends StatefulWidget {
   final Participant participant;
   final Widget child;
   final bool isActive;
+  final bool isFullScreen;
 
   const ParticipantTile({
     super.key,
     required this.participant,
     required this.child,
     this.isActive = false,
+    this.isFullScreen = false,
   });
 
   @override
@@ -65,24 +67,26 @@ class _ParticipantTileState extends State<ParticipantTile>
           scale: _scaleAnimation.value,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: widget.isActive
-                    ? Colors.greenAccent
-                    : Colors.transparent,
-                width: 3.0,
-              ),
-              boxShadow: [
-                if (widget.isActive)
-                  BoxShadow(
-                    color: Colors.greenAccent.withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-              ],
+              borderRadius: widget.isFullScreen
+                  ? BorderRadius.zero
+                  : BorderRadius.circular(16),
+              border: widget.isActive && !widget.isFullScreen
+                  ? Border.all(color: Colors.greenAccent, width: 3.0)
+                  : null,
+              boxShadow: widget.isActive && !widget.isFullScreen
+                  ? [
+                      BoxShadow(
+                        color: Colors.greenAccent.withValues(alpha: 0.3),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: widget.isFullScreen
+                  ? BorderRadius.zero
+                  : BorderRadius.circular(12),
               child: Stack(
                 fit: StackFit.expand,
                 children: [

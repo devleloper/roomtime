@@ -11,6 +11,7 @@ import '../../../theme/app_colors.dart';
 import '../../../widgets/liquid_bounce_button.dart';
 import '../../../widgets/liquid_glass_container.dart';
 import '../widgets/draggable_pip_view.dart';
+import '../widgets/dynamic_island_badge.dart';
 import '../widgets/mission_control_grid.dart';
 import '../widgets/participant_tile.dart';
 import '../bloc/room_bloc.dart';
@@ -150,52 +151,9 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
                         style: const TextStyle(color: AppColors.error),
                       ),
                     ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 16,
-                    left: 0,
-                    right: 0,
-                    child: AnimatedSlide(
-                      offset: _showControls
-                          ? Offset.zero
-                          : const Offset(0, -1.5),
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedOpacity(
-                        opacity: _showControls ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 300),
-                        child: IgnorePointer(
-                          ignoring: !_showControls,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              LiquidGlassContainer(
-                                blur: 12,
-                                borderRadius: 100,
-                                backgroundColor: Colors.black.withValues(
-                                  alpha: 0.5,
-                                ),
-                                borderColor: Colors.white.withValues(
-                                  alpha: 0.1,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 10,
-                                ),
-                                child: Text(
-                                  widget.roomName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  DynamicIslandBadge(
+                    roomName: widget.roomName,
+                    isVisible: _showControls,
                   ),
                   AnimatedPositioned(
                     bottom: _showControls
@@ -247,6 +205,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
             key: ValueKey(state.participants.first.sid),
             participant: state.participants.first,
             isActive: false, // No active speaker highlight in 1-on-1 calls
+            isFullScreen: true,
             child: _buildFullscreenVideo(
               state.participants.first,
               fit: VideoViewFit.cover,
@@ -293,6 +252,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
               child: ParticipantTile(
                 participant: fullscreenParticipant,
                 isActive: false, // No active speaker highlight in 1-on-1 calls
+                isFullScreen: true,
                 child: _buildFullscreenVideo(
                   fullscreenParticipant,
                   fit: fullscreenFit,
