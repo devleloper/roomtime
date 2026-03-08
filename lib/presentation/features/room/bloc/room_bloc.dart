@@ -48,7 +48,6 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         }
       }
 
-      // 2. Proceed to Connect
       final token = await _roomRepository.getJoinToken(
         event.roomName,
         event.participantName,
@@ -215,7 +214,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     ClearRoomNotification event,
     Emitter<RoomState> emit,
   ) {
-    // We only clear if there is a message, to emit a state change.
+    // Emit state change only if message exists
     // Instead of passing null (which copyWith might ignore if not careful),
     // let's adjust copyWith or just pass empty string.
     // Wait, copyWith usually takes nullable as "skip".

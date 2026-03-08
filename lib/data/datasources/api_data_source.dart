@@ -39,12 +39,11 @@ class ApiDataSource {
       ),
     );
 
-    // ── SSL Pinning (Let's Encrypt Root CA) ──────────────────────
+    // SSL Pinning (Let's Encrypt Root CA)
     if (!kIsWeb) {
       (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        // We pin the ISRG Root X1 certificate, which is the root CA for Let's Encrypt.
-        // Pinning the root instead of the leaf ensures the app won't break
-        // every 90 days when NPM auto-renews the certificate.
+        // Pin ISRG Root X1 certificate (Let's Encrypt root CA).
+        // Pinning the root prevents app breakage when leaf certificates auto-renew.
         final securityContext = SecurityContext(withTrustedRoots: false);
 
         // Use realistic ISRG Root X1
@@ -83,8 +82,8 @@ class ApiDataSource {
             "-----END CERTIFICATE-----",
           ),
         );
-        // If ENV is development and baseUrl is HTTP, allow bad certs (for local Docker proxy testing)
-        // In production, baseUrl will be HTTPS and this will enforce the pin.
+        // Allow bad certs for local HTTP Docker proxy testing
+        // Production HTTPS enforces the pin.
         final client = HttpClient(context: securityContext);
         if (Env.apiBaseUrl.startsWith('http://192.') ||
             Env.apiBaseUrl.startsWith('http://localhost')) {

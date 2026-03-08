@@ -16,36 +16,18 @@ class LiveKitDataSource {
     // Store token in memory only (for potential reconnect)
     _currentToken = token;
 
-    // ── Production-grade WebRTC Configuration ─────────────────
-    //
-    // H.264: Uses hardware encoder on all iOS/Android devices (VideoToolbox / MediaCodec).
-    //   VP8 = software-only on mobile → CPU saturation → frame drops every 2-4s.
-    //   H.264 offloads to dedicated ASIC → near-zero CPU for encoding.
-    //
-    // Simulcast layers: SFU receives 3 quality streams simultaneously.
-    //   Subscribers dynamically switch layers based on their bandwidth/viewport.
-    //   This is how Zoom/Meet handle variable network conditions.
-    //
-    // DegradationPreference.maintainFramerate: Under network congestion,
-    //   WebRTC will drop RESOLUTION before FRAMERATE. This prevents the
-    //   "slideshow" effect — video stays smooth but lower-res.
-    //
-    // Opus RED (Redundant Audio Data): Each audio packet contains a copy of
-    //   the previous frame. If a packet is lost, the receiver can reconstruct
-    //   audio from the redundant data → eliminates audio glitches on lossy mobile networks.
-    //
-    // DTX (Discontinuous Transmission): Stops sending audio packets during silence.
-    //   Saves ~30 kbps per silent participant in group calls.
-    //
-    // AEC/AGC/NoiseSuppression: Hardware-accelerated audio processing.
-    //   Eliminates echo from phone speakers, normalizes volume across devices,
-    //   and filters background noise (keyboard, fan, street).
+    // Production-grade WebRTC Configuration
+    // • H.264: Hardware encoding on mobile (saves CPU/battery over VP8).
+    // • Simulcast: Sends multiple resolutions for adaptive client reception.
+    // • DegradationPreference: Drops resolution instead of framerate under congestion.
+    // • Opus RED & DTX: Redundant packets for loss recovery; silences save bandwidth.
+    // • Hardware Audio: AEC, AGC, and noise suppression enabled.
 
     final roomOptions = RoomOptions(
       adaptiveStream: true,
       dynacast: true,
 
-      // ── Video: H.264 hardware codec + simulcast ──
+      // Video: H.264 hardware codec + simulcast
       defaultVideoPublishOptions: const VideoPublishOptions(
         videoCodec: 'h264',
         simulcast: true,
@@ -74,13 +56,13 @@ class LiveKitDataSource {
         degradationPreference: DegradationPreference.maintainFramerate,
       ),
 
-      // ── Audio: Opus with RED + DTX + hardware processing ──
+      // Audio: Opus with RED + DTX + hardware processing
       defaultAudioPublishOptions: const AudioPublishOptions(
         dtx: true, // save bandwidth during silence
         red: true, // redundant audio data — protects against packet loss
       ),
 
-      // ── Audio capture: hardware AEC/AGC/NS ──
+      // Audio capture: hardware AEC/AGC/NS
       defaultAudioCaptureOptions: const AudioCaptureOptions(
         echoCancellation: true,
         autoGainControl: true,
@@ -88,7 +70,7 @@ class LiveKitDataSource {
         highPassFilter: true, // removes low-frequency rumble (AC, traffic)
       ),
 
-      // ── Camera: 720p @ 30fps from front camera ──
+      // Camera: 720p @ 30fps from front camera
       defaultCameraCaptureOptions: const CameraCaptureOptions(
         maxFrameRate: 30,
         cameraPosition: CameraPosition.front,
@@ -117,7 +99,7 @@ class LiveKitDataSource {
       }
       await _room!.disconnect();
     }
-    // ── CRITICAL: Clear sensitive state ───────────────────
+    // CRITICAL: Clear sensitive state
     _currentToken = null;
     _room = null;
   }

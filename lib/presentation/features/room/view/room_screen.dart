@@ -49,8 +49,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// Camera privacy: disable camera when app goes to background.
-  /// Prevents video leak when user switches apps or locks device.
+  /// Mute camera automatically on background state for privacy.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
@@ -60,10 +59,8 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
 
       if (state == AppLifecycleState.paused ||
           state == AppLifecycleState.hidden) {
-        // Mute camera when app goes to background (privacy)
         bloc.add(ToggleCamera(false));
       } else if (state == AppLifecycleState.resumed) {
-        // Re-enable camera when app returns to foreground
         bloc.add(ToggleCamera(true));
       }
     } catch (_) {
@@ -111,7 +108,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     return BlocProvider(
       create: (context) {
         final bloc = getIt<RoomBloc>();
-        // Delay heavy C++ WebRTC connection logic to allow route push transition (300ms) to complete
+        // Delay WebRTC bindings by 350ms for route transition to complete
         Future.delayed(const Duration(milliseconds: 350), () {
           if (!bloc.isClosed) {
             bloc.add(
@@ -261,7 +258,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-          _buildTapOverlay(), // Placed UNDER PiP so PiP dragging works
+          _buildTapOverlay(), // Placed UNDER PiP to allow PiP dragging
           DraggablePipView(
             onTap: () {
               setState(() {
@@ -305,7 +302,6 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _toggleControls,
-        // Also absorb dual touch scale events completely when not intended for InteractiveViewer
       ),
     );
   }
@@ -429,8 +425,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildMissionControlGrid(BuildContext context, RoomState state) {
-    // Only wrap with SafeArea when rendering the grid (more than 2 people) per requirements
-    // so we don't clip video streams by the notch unless it's a grid layout.
+    // SafeArea prevents notch clipping, applied only to grids > 2 people.
     return SafeArea(
       child: MissionControlGrid(
         participants: state.participants,
@@ -467,13 +462,11 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         ),
         const SizedBox(width: 20),
         _buildMediaButton(Icons.call_end, () {
-          // Immediately disable camera and mic to clear hardware lights/audio instantly
           final bloc = context.read<RoomBloc>();
           bloc.add(ToggleMicrophone(false));
           bloc.add(ToggleCamera(false));
 
-          // BLoC disposes the room asynchronously upon Provider tear-down,
-          // instantly pop to avoid transition jank.
+          // BLoC asynchronous teardown handling
           if (context.canPop()) {
             context.pop();
           } else {

@@ -18,8 +18,7 @@ class HomeMobileLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We add a blur here because CameraBackgroundView no longer has a global blur,
-    // and the mobile text needs to be readable over the raw camera.
+    // Subtle background blur for text legibility over raw camera feed
     return Stack(
       children: [
         // Subtle background blur for text legibility on mobile
