@@ -1,9 +1,9 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../widgets/custom_bounce_button.dart';
+import '../../../../widgets/liquid_glass_container.dart';
 import '../../bloc/home_bloc.dart';
 import '../../bloc/home_event.dart';
 import '../../bloc/home_state.dart';
@@ -27,60 +27,56 @@ class HomeDesktopLayout extends StatelessWidget {
             // Sidebar panel with frosted glass
             SizedBox(
               width: constraints.maxWidth > 380 ? 380 : constraints.maxWidth,
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    child: SafeArea(
-                      right: false,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 42, 24, 24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const Text(
-                                  'FamilyCalls',
-                                  style: TextStyle(
-                                    fontSize: 28, // Proportional to mobile's 34
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                    letterSpacing: -0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                // Using the exact same button style as mobile
-                                _buildActionSection(context),
-                              ],
+              child: LiquidGlassContainer(
+                blur: 30,
+                backgroundColor: Colors.black.withValues(alpha: 0.5),
+                borderColor: Colors.transparent,
+                borderRadius: 0,
+                child: SafeArea(
+                  right: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 42, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'FamilyCalls',
+                              style: TextStyle(
+                                fontSize: 28, // Proportional to mobile's 34
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                              ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24.0,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Rooms',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                _buildRefreshButton(context),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Expanded(child: _buildRoomsList(context)),
-                        ],
+                            const SizedBox(height: 24),
+                            // Using the exact same button style as mobile
+                            _buildActionSection(context),
+                          ],
+                        ),
                       ),
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Rooms',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            _buildRefreshButton(context),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(child: _buildRoomsList(context)),
+                    ],
                   ),
                 ),
               ),

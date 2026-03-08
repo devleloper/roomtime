@@ -1,6 +1,6 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+import '../../../../presentation/widgets/liquid_glass_container.dart';
 
 class ParticipantTile extends StatefulWidget {
   final Participant participant;
@@ -88,12 +88,12 @@ class _ParticipantTileState extends State<ParticipantTile>
                 children: [
                   widget.child,
                   if (_blurAnimation.value > 0.1)
-                    BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: _blurAnimation.value,
-                        sigmaY: _blurAnimation.value,
-                      ),
-                      child: Container(color: Colors.transparent),
+                    LiquidGlassContainer(
+                      blur: _blurAnimation.value,
+                      backgroundColor: Colors.transparent,
+                      borderColor: Colors.transparent,
+                      borderRadius: 12,
+                      child: Container(),
                     ),
                 ],
               ),

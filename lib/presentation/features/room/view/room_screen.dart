@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,7 +8,8 @@ import 'package:livekit_client/livekit_client.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/di/injection.dart';
 import '../../../theme/app_colors.dart';
-import '../../../widgets/custom_bounce_button.dart';
+import '../../../widgets/liquid_bounce_button.dart';
+import '../../../widgets/liquid_glass_container.dart';
 import '../widgets/draggable_pip_view.dart';
 import '../widgets/mission_control_grid.dart';
 import '../widgets/participant_tile.dart';
@@ -168,39 +168,26 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(
-                                    sigmaX: 12,
-                                    sigmaY: 12,
-                                  ),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      widget.roomName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
+                              LiquidGlassContainer(
+                                blur: 12,
+                                borderRadius: 100,
+                                backgroundColor: Colors.black.withValues(
+                                  alpha: 0.5,
+                                ),
+                                borderColor: Colors.white.withValues(
+                                  alpha: 0.1,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 10,
+                                ),
+                                child: Text(
+                                  widget.roomName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ),
@@ -462,26 +449,16 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
               Positioned(
                 bottom: verticalPadding + 12,
                 right: horizontalPadding + 12,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(100),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.mic_off,
-                        size: 20,
-                        color: AppColors.error,
-                      ),
-                    ),
+                child: LiquidGlassContainer(
+                  blur: 8,
+                  borderRadius: 100,
+                  backgroundColor: Colors.black.withValues(alpha: 0.4),
+                  borderColor: Colors.white.withValues(alpha: 0.1),
+                  padding: const EdgeInsets.all(6),
+                  child: const Icon(
+                    Icons.mic_off,
+                    size: 20,
+                    color: AppColors.error,
                   ),
                 ),
               ),
@@ -556,39 +533,13 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
         color?.withValues(alpha: 0.4) ??
         AppColors.surface.withValues(alpha: 0.4);
 
-    return CustomBounceButton(
+    return LiquidBounceButton(
       onPressed: () {
         _startHideTimer();
         onPressed();
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(100),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: bgColor,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.15),
-                width: 1,
-              ),
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              transitionBuilder: (child, animation) =>
-                  FadeTransition(opacity: animation, child: child),
-              child: Icon(
-                icon,
-                key: ValueKey(icon),
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-          ),
-        ),
-      ),
+      icon: icon,
+      bgColor: bgColor,
     );
   }
 }
@@ -744,36 +695,32 @@ class _FoldingNotificationHUDState extends State<_FoldingNotificationHUD>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutCubic,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: _isExpanded
-                          ? 24
-                          : 10, // 10 matches vertical padding for a perfect circle
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        width: 1,
+              LiquidGlassContainer(
+                blur: 12,
+                borderRadius: 100,
+                backgroundColor: Colors.black.withValues(alpha: 0.5),
+                borderColor: Colors.white.withValues(alpha: 0.1),
+                padding: EdgeInsets.symmetric(
+                  horizontal: _isExpanded
+                      ? 24
+                      : 10, // 10 matches vertical padding for a perfect circle
+                  vertical: 10,
+                ),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        color: Colors.white,
+                        size: 20,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        AnimatedSize(
+                      AnimatedOpacity(
+                        opacity: _isExpanded ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: AnimatedSize(
                           duration: const Duration(milliseconds: 400),
                           curve: Curves.easeOutCubic,
                           alignment: Alignment.centerLeft,
@@ -794,8 +741,8 @@ class _FoldingNotificationHUDState extends State<_FoldingNotificationHUD>
                                 )
                               : const SizedBox.shrink(),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),

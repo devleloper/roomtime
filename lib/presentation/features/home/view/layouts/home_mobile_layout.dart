@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../widgets/custom_bounce_button.dart';
+import '../../../../widgets/liquid_glass_container.dart';
 import '../../bloc/home_bloc.dart';
 import '../../bloc/home_event.dart';
 import '../../bloc/home_state.dart';
@@ -22,9 +23,12 @@ class HomeMobileLayout extends StatelessWidget {
     return Stack(
       children: [
         // Subtle background blur for text legibility on mobile
-        BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-          child: Container(color: Colors.black.withValues(alpha: 0.5)),
+        LiquidGlassContainer(
+          blur: 30,
+          backgroundColor: Colors.black.withValues(alpha: 0.5),
+          borderColor: Colors.transparent,
+          borderRadius: 0,
+          child: Container(),
         ),
         SafeArea(
           child: Padding(
@@ -70,23 +74,13 @@ class HomeMobileLayout extends StatelessWidget {
       onPressed: () {
         context.read<HomeBloc>().add(FetchRooms());
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(100),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: 0.4),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.15),
-                width: 1,
-              ),
-            ),
-            child: const Icon(Icons.refresh, color: Colors.white, size: 24),
-          ),
-        ),
+      child: LiquidGlassContainer(
+        borderRadius: 100,
+        blur: 12,
+        backgroundColor: AppColors.surface.withValues(alpha: 0.4),
+        borderColor: Colors.white.withValues(alpha: 0.15),
+        padding: const EdgeInsets.all(12),
+        child: const Icon(Icons.refresh, color: Colors.white, size: 24),
       ),
     );
   }
