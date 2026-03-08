@@ -16,8 +16,10 @@ import '../../data/datasources/api_data_source.dart' as _i882;
 import '../../data/datasources/livekit_data_source.dart' as _i926;
 import '../../data/repositories/auth_repository.dart' as _i481;
 import '../../data/repositories/room_repository.dart' as _i393;
+import '../../data/services/audio_service.dart' as _i186;
 import '../../domain/repositories/i_auth_repository.dart' as _i841;
 import '../../domain/repositories/i_room_repository.dart' as _i80;
+import '../../domain/services/i_audio_service.dart' as _i560;
 import '../../presentation/features/auth/bloc/auth_bloc.dart' as _i379;
 import '../../presentation/features/home/bloc/home_bloc.dart' as _i635;
 import '../../presentation/features/room/bloc/room_bloc.dart' as _i1033;
@@ -31,6 +33,7 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     gh.factory<_i882.ApiDataSource>(() => _i882.ApiDataSource());
     gh.factory<_i926.LiveKitDataSource>(() => _i926.LiveKitDataSource());
+    gh.lazySingleton<_i560.IAudioService>(() => _i186.AudioService());
     gh.factory<_i80.IRoomRepository>(
       () => _i393.RoomRepository(
         gh<_i882.ApiDataSource>(),
@@ -42,7 +45,10 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i635.HomeBloc>(() => _i635.HomeBloc(gh<_i882.ApiDataSource>()));
     gh.factory<_i1033.RoomBloc>(
-      () => _i1033.RoomBloc(gh<_i80.IRoomRepository>()),
+      () => _i1033.RoomBloc(
+        gh<_i80.IRoomRepository>(),
+        gh<_i560.IAudioService>(),
+      ),
     );
     gh.factory<_i379.AuthBloc>(
       () => _i379.AuthBloc(gh<_i841.IAuthRepository>()),

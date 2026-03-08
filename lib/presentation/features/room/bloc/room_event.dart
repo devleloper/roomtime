@@ -53,3 +53,13 @@ class ActiveSpeakersChanged extends RoomEvent {
   @override
   List<Object?> get props => [activeSpeakers];
 }
+
+class RoomNotificationReceived extends RoomEvent {
+  final String message;
+  const RoomNotificationReceived(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+class ClearRoomNotification extends RoomEvent {}

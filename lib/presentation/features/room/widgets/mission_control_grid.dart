@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'participant_tile.dart';
 
 class MissionControlGrid extends StatelessWidget {
   final List<Participant> participants;
@@ -17,25 +18,14 @@ class MissionControlGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (participants.isEmpty) return const SizedBox.shrink();
 
-    // Mission Control logic: automatically divide the screen space.
-    // If the list is <= 4, we can usually do a 2x2 or 1x2 grid.
-    // Given the constraints: all videos must fit without scrolling.
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalParticipants = participants.length;
-        int activeSpkCount = activeSpeakers
-            .where((s) => participants.contains(s))
-            .length;
-
-        // Let's create an implicit animation layout.
-        // Wrap provides a simple way to fill space, but we want proportional filling.
 
         int columns;
         int rows;
 
         if (totalParticipants <= 2) {
-          // Fallback, though 1-on-1 is handled elsewhere.
           columns = 1;
           rows = totalParticipants;
         } else if (totalParticipants <= 4) {
@@ -49,101 +39,60 @@ class MissionControlGrid extends StatelessWidget {
           rows = (totalParticipants / 3).ceil();
         }
 
-        // We need a fallback algorithm that tries to maximize usage of the space
-        // while remaining inside constraints.
+        final spacing = 8.0;
+        final availableWidth = constraints.maxWidth;
+        final availableHeight = constraints.maxHeight;
 
-        return Center(
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            runAlignment: WrapAlignment.center,
-            spacing: 8.0,
-            runSpacing: 8.0,
-            children: participants.map((participant) {
-              final isActive = activeSpeakers.contains(participant);
+        final tileWidth =
+            (availableWidth - (spacing * (columns + 1))) / columns;
+        final tileHeight = (availableHeight - (spacing * (rows + 1))) / rows;
 
-              final activeTrackPub = participant.videoTrackPublications
-                  .where((p) => p.track != null)
-                  .firstOrNull;
+        final children = <Widget>[];
 
-              // Extract actual video dimensions from WebRTC track
-              double aspectRatio = 16 / 9; // Fallback to landscape by default
-              if (activeTrackPub != null && activeTrackPub.dimensions != null) {
-                final w = activeTrackPub.dimensions!.width;
-                final h = activeTrackPub.dimensions!.height;
-                if (h > 0 && w > 0) {
-                  aspectRatio = w / h;
-                }
-              }
+        for (int i = 0; i < totalParticipants; i++) {
+          final participant = participants[i];
+          final isActive = activeSpeakers.contains(participant);
 
-              // Compute the maximum available tile bounds (accounting for spacing)
-              final maxTileWidth = (constraints.maxWidth / columns) - 8.0;
-              final maxTileHeight =
-                  (constraints.maxHeight / (rows > 0 ? rows : 1)) - 8.0;
+          final rowIndex = i ~/ columns;
+          final colIndex = i % columns;
 
-              // Start by attempting to fill the width
-              double targetWidth = maxTileWidth;
-              double targetHeight = targetWidth / aspectRatio;
+          // Center the last row if it's not full
+          int itemsInThisRow = columns;
+          if (rowIndex == rows - 1) {
+            final remainder = totalParticipants % columns;
+            if (remainder != 0) {
+              itemsInThisRow = remainder;
+            }
+          }
 
-              // If filling the width makes it too tall, constrain by height instead
-              if (targetHeight > maxTileHeight) {
-                targetHeight = maxTileHeight;
-                targetWidth = targetHeight * aspectRatio;
-              }
+          // Calculate Centered X offset for current row
+          final rowWidth =
+              (itemsInThisRow * tileWidth) + (spacing * (itemsInThisRow - 1));
+          final startX = (availableWidth - rowWidth) / 2;
 
-              // Active Speaker Inflation System
-              if (activeSpkCount > 0) {
-                if (isActive) {
-                  targetWidth *= 1.05;
-                  targetHeight *= 1.05;
-                } else {
-                  targetWidth *= 0.95;
-                  targetHeight *= 0.95;
-                }
-              }
+          final xOffset = startX + (colIndex * (tileWidth + spacing));
+          final yOffset = spacing + (rowIndex * (tileHeight + spacing));
 
-              // Final clamp to ensure we never break out of the parent LayoutBuilder bounds
-              targetWidth = targetWidth.clamp(50.0, constraints.maxWidth - 8.0);
-              targetHeight = targetHeight.clamp(
-                50.0,
-                constraints.maxHeight - 8.0,
-              );
+          // Physical Spring Animations for grid layout shift
+          children.add(
+            AnimatedPositioned(
+              key: ValueKey(participant.sid),
+              duration: const Duration(milliseconds: 650),
+              curve: Curves.elasticOut, // Spring physics
+              left: xOffset,
+              top: yOffset,
+              width: tileWidth,
+              height: tileHeight,
+              child: ParticipantTile(
+                participant: participant,
+                isActive: isActive,
+                child: buildVideoView(participant, fit: VideoViewFit.cover),
+              ),
+            ),
+          );
+        }
 
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.fastOutSlowIn,
-                width: targetWidth,
-                height: targetHeight,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isActive ? Colors.greenAccent : Colors.transparent,
-                      width: isActive ? 4.0 : 0.0,
-                    ),
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                              color: Colors.greenAccent.withValues(alpha: 0.3),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: buildVideoView(
-                      participant,
-                      fit: VideoViewFit.contain,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        );
+        return Stack(children: children);
       },
     );
   }

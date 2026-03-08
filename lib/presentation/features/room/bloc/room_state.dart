@@ -13,6 +13,7 @@ class RoomState extends Equatable {
   final bool isFrontCamera;
   final int updateCount;
   final List<Participant> activeSpeakers;
+  final String? notificationMessage;
 
   const RoomState({
     this.status = RoomStatus.initial,
@@ -24,6 +25,7 @@ class RoomState extends Equatable {
     this.isFrontCamera = true,
     this.updateCount = 0,
     this.activeSpeakers = const [],
+    this.notificationMessage,
   });
 
   RoomState copyWith({
@@ -36,6 +38,7 @@ class RoomState extends Equatable {
     bool? isFrontCamera,
     int? updateCount,
     List<Participant>? activeSpeakers,
+    String? notificationMessage,
   }) {
     return RoomState(
       status: status ?? this.status,
@@ -47,6 +50,7 @@ class RoomState extends Equatable {
       isFrontCamera: isFrontCamera ?? this.isFrontCamera,
       updateCount: updateCount ?? this.updateCount,
       activeSpeakers: activeSpeakers ?? this.activeSpeakers,
+      notificationMessage: notificationMessage ?? this.notificationMessage,
     );
   }
 
@@ -61,5 +65,6 @@ class RoomState extends Equatable {
     isFrontCamera,
     updateCount,
     activeSpeakers,
+    notificationMessage,
   ];
 }

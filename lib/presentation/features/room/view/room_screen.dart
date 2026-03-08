@@ -6,11 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../core/di/injection.dart';
 import '../../../theme/app_colors.dart';
 import '../../../widgets/custom_bounce_button.dart';
 import '../widgets/draggable_pip_view.dart';
 import '../widgets/mission_control_grid.dart';
+import '../widgets/participant_tile.dart';
 import '../bloc/room_bloc.dart';
 import '../bloc/room_event.dart';
 import '../bloc/room_state.dart';
@@ -32,12 +34,14 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WakelockPlus.enable(); // Keep screen on during call
     WidgetsBinding.instance.addObserver(this);
     _startHideTimer();
   }
 
   @override
   void dispose() {
+    WakelockPlus.disable(); // Allow screen to turn off after call
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -206,6 +210,16 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
+                  AnimatedPositioned(
+                    bottom: _showControls
+                        ? 120
+                        : 40, // Dynamic distance from bottom
+                    left: 0,
+                    right: 0,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    child: _FoldingNotificationHUD(state: state),
+                  ),
                   Positioned(
                     bottom: 30,
                     left: 0,
@@ -242,10 +256,15 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
     if (state.participants.length == 1) {
       return Stack(
         children: [
-          _buildFullscreenVideo(
-            state.participants.first,
-            fit: VideoViewFit.cover,
-            showMicIcon: false,
+          ParticipantTile(
+            key: ValueKey(state.participants.first.sid),
+            participant: state.participants.first,
+            isActive: false, // No active speaker highlight in 1-on-1 calls
+            child: _buildFullscreenVideo(
+              state.participants.first,
+              fit: VideoViewFit.cover,
+              showMicIcon: false,
+            ),
           ),
           _buildTapOverlay(),
         ],
@@ -284,10 +303,14 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
               panEnabled: false,
               minScale: 1.0,
               maxScale: 4.0,
-              child: _buildFullscreenVideo(
-                fullscreenParticipant,
-                fit: fullscreenFit,
-                showMicIcon: !isLocalFullscreen,
+              child: ParticipantTile(
+                participant: fullscreenParticipant,
+                isActive: false, // No active speaker highlight in 1-on-1 calls
+                child: _buildFullscreenVideo(
+                  fullscreenParticipant,
+                  fit: fullscreenFit,
+                  showMicIcon: !isLocalFullscreen,
+                ),
               ),
             ),
           ),
@@ -301,10 +324,11 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 400),
               transitionBuilder: _buildSwapTransition,
-              child: _buildVideoView(
-                pipParticipant,
+              child: ParticipantTile(
                 key: ValueKey(pipParticipant.sid),
-                fit: VideoViewFit.cover,
+                participant: pipParticipant,
+                isActive: false, // No active speaker highlight in 1-on-1 calls
+                child: _buildVideoView(pipParticipant, fit: VideoViewFit.cover),
               ),
             ),
           ),
@@ -468,11 +492,15 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildMissionControlGrid(BuildContext context, RoomState state) {
-    return MissionControlGrid(
-      participants: state.participants,
-      activeSpeakers: state.activeSpeakers,
-      buildVideoView: (participant, {fit = VideoViewFit.cover}) =>
-          _buildVideoView(participant, fit: fit),
+    // Only wrap with SafeArea when rendering the grid (more than 2 people) per requirements
+    // so we don't clip video streams by the notch unless it's a grid layout.
+    return SafeArea(
+      child: MissionControlGrid(
+        participants: state.participants,
+        activeSpeakers: state.activeSpeakers,
+        buildVideoView: (participant, {fit = VideoViewFit.cover}) =>
+            _buildVideoView(participant, fit: fit),
+      ),
     );
   }
 
@@ -630,6 +658,151 @@ class _CameraFlipWidgetState extends State<_CameraFlipWidget>
         );
       },
       child: widget.child,
+    );
+  }
+}
+
+class _FoldingNotificationHUD extends StatefulWidget {
+  final RoomState state;
+
+  const _FoldingNotificationHUD({Key? key, required this.state})
+    : super(key: key);
+
+  @override
+  State<_FoldingNotificationHUD> createState() =>
+      _FoldingNotificationHUDState();
+}
+
+class _FoldingNotificationHUDState extends State<_FoldingNotificationHUD>
+    with SingleTickerProviderStateMixin {
+  String _message = '';
+  bool _isVisible = false;
+  bool _isExpanded = false;
+  Timer? _collapseTimer;
+  Timer? _hideTimer;
+
+  @override
+  void didUpdateWidget(covariant _FoldingNotificationHUD oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final newMessage = widget.state.notificationMessage;
+    final oldMessage = oldWidget.state.notificationMessage;
+
+    if (newMessage != null &&
+        newMessage.isNotEmpty &&
+        newMessage != oldMessage) {
+      _showNotification(newMessage);
+    }
+  }
+
+  void _showNotification(String msg) {
+    _collapseTimer?.cancel();
+    _hideTimer?.cancel();
+
+    setState(() {
+      _message = msg;
+      _isVisible = true;
+      _isExpanded = true;
+    });
+
+    // Fold into icon after 2.5 seconds
+    _collapseTimer = Timer(const Duration(milliseconds: 2500), () {
+      if (mounted) {
+        setState(() {
+          _isExpanded = false;
+        });
+      }
+    });
+
+    // Float completely down after 3.2 seconds
+    _hideTimer = Timer(const Duration(milliseconds: 3200), () {
+      if (mounted) {
+        setState(() {
+          _isVisible = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _collapseTimer?.cancel();
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedSlide(
+        offset: _isVisible ? Offset.zero : const Offset(0, 1.0),
+        duration: const Duration(milliseconds: 500),
+        curve: _isVisible ? Curves.easeOutBack : Curves.easeIn,
+        child: AnimatedOpacity(
+          opacity: _isVisible ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 300),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: _isExpanded
+                          ? 24
+                          : 10, // 10 matches vertical padding for a perfect circle
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.info_outline,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.centerLeft,
+                          child: _isExpanded
+                              ? Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: Text(
+                                    _message,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.clip,
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

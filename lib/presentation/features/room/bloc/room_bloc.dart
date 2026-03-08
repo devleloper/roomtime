@@ -5,15 +5,18 @@ import 'package:injectable/injectable.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../domain/repositories/i_room_repository.dart';
+import '../../../../domain/services/i_audio_service.dart';
 import 'room_event.dart';
 import 'room_state.dart';
 
 @injectable
 class RoomBloc extends Bloc<RoomEvent, RoomState> {
   final IRoomRepository _roomRepository;
+  final IAudioService _audioService;
   lk.CancelListenFunc? _roomListener;
 
-  RoomBloc(this._roomRepository) : super(const RoomState()) {
+  RoomBloc(this._roomRepository, this._audioService)
+    : super(const RoomState()) {
     on<ConnectToRoom>(_onConnectToRoom);
     on<DisconnectRoom>(_onDisconnectRoom);
     on<ToggleMicrophone>(_onToggleMicrophone);
@@ -21,6 +24,8 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     on<SwitchCamera>(_onSwitchCamera);
     on<RoomParticipantsChanged>(_onRoomParticipantsChanged);
     on<ActiveSpeakersChanged>(_onActiveSpeakersChanged);
+    on<RoomNotificationReceived>(_onRoomNotificationReceived);
+    on<ClearRoomNotification>(_onClearRoomNotification);
   }
 
   Future<void> _onConnectToRoom(
@@ -56,6 +61,16 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       final room = await _roomRepository.connectToRoom(token);
 
       _roomListener = room.createListener().on<lk.RoomEvent>((roomEvent) {
+        if (roomEvent is lk.ParticipantConnectedEvent) {
+          _audioService.playJoinSound();
+          add(
+            const RoomNotificationReceived("A new participant joined the call"),
+          );
+        } else if (roomEvent is lk.ParticipantDisconnectedEvent) {
+          _audioService.playLeaveSound();
+          add(const RoomNotificationReceived("A participant left the call"));
+        }
+
         if (roomEvent is lk.ParticipantConnectedEvent ||
             roomEvent is lk.ParticipantDisconnectedEvent ||
             roomEvent is lk.TrackSubscribedEvent ||
@@ -180,6 +195,32 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         updateCount: state.updateCount + 1,
       ),
     );
+  }
+
+  void _onRoomNotificationReceived(
+    RoomNotificationReceived event,
+    Emitter<RoomState> emit,
+  ) {
+    emit(state.copyWith(notificationMessage: event.message));
+
+    // Auto-clear notification after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!isClosed) {
+        add(ClearRoomNotification());
+      }
+    });
+  }
+
+  void _onClearRoomNotification(
+    ClearRoomNotification event,
+    Emitter<RoomState> emit,
+  ) {
+    // We only clear if there is a message, to emit a state change.
+    // Instead of passing null (which copyWith might ignore if not careful),
+    // let's adjust copyWith or just pass empty string.
+    // Wait, copyWith usually takes nullable as "skip".
+    // Let me check copyWith. If it takes null to mean "don't change", I have to use a wrapper or pass empty.
+    emit(state.copyWith(notificationMessage: ""));
   }
 
   @override
