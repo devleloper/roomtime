@@ -8,7 +8,7 @@ class E2EeClient {
   /// Holds the static public key of the server
   static SimplePublicKey? _serverPublicKey;
 
-  /// Holds our ephemeral keypair for the duration of the session/app lifecycle
+  /// Ephemeral keypair for session lifecycle
   static SimpleKeyPair? _clientKeyPair;
   static SimplePublicKey? _clientPublicKey;
 
@@ -18,19 +18,19 @@ class E2EeClient {
   /// Cached AES-256-GCM key derived via HKDF-SHA256 from the shared secret
   static SecretKey? _aesKey;
 
-  /// Initialize the client's ephemeral keypair
+  /// Initialize ephemeral keypair
   static Future<void> init() async {
     _clientKeyPair = await _x25519.newKeyPair();
     _clientPublicKey = await _clientKeyPair!.extractPublicKey();
   }
 
-  /// Get the client's public key as a base64 string to send in headers/body
+  /// Client public key (Base64)
   static Future<String> getClientPublicKeyBase64() async {
     if (_clientPublicKey == null) await init();
     return base64Encode(_clientPublicKey!.bytes);
   }
 
-  /// Set the server's public key (fetched from /v1/keys/public) and derive the AES key
+  /// Set server public key and derive AES key
   static Future<void> setServerPublicKey(String base64Key) async {
     if (_clientKeyPair == null) await init();
 
@@ -44,17 +44,16 @@ class E2EeClient {
     );
 
     // 2. HKDF-SHA256: Derive AES key (32 bytes)
-    // Info provides domain separation — MUST match Go server's DeriveAESKey info param
+    // Domain separation info MUST match Go server's DeriveAESKey info param
     final hkdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
     _aesKey = await hkdf.deriveKey(
       secretKey: _sharedSecret!,
-      nonce:
-          [], // salt — nil on Go side (acceptable per RFC 5869 for high-entropy IKM)
+      nonce: [], // Nil salt on Go side (acceptable per RFC 5869)
       info: utf8.encode('familycalls-e2ee-v1'), // domain separation
     );
   }
 
-  /// Encrypt a JSON payload string into a base64 ciphertext and base64 nonce
+  /// Encrypt JSON payload (returns Base64 ciphertext & nonce)
   static Future<Map<String, String>> encryptPayload(String jsonString) async {
     if (_aesKey == null)
       throw Exception('E2EE not initialized with server key');
@@ -64,15 +63,14 @@ class E2EeClient {
     // AES-GCM uses a 12-byte nonce
     final secretBox = await _aesGcm.encrypt(plaintext, secretKey: _aesKey!);
 
-    // In dart cryptography, the ciphertext includes the MAC tag at the end.
-    // Go's cipher.NewGCM().Seal() also appends the tag to the ciphertext.
+    // Ciphertext includes MAC tag at the end (compatible with Go's cipher.NewGCM().Seal())
     return {
       'nonce': base64Encode(secretBox.nonce),
       'ciphertext': base64Encode(secretBox.cipherText + secretBox.mac.bytes),
     };
   }
 
-  /// Decrypt a base64 ciphertext and base64 nonce back to a JSON string
+  /// Decrypt Base64 payload back to JSON string
   static Future<String> decryptPayload(
     String nonceBase64,
     String ciphertextBase64,
