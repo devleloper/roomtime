@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../widgets/custom_bounce_button.dart';
 import '../../../../widgets/liquid_glass_container.dart';
+import '../../../../widgets/liquid_bounce_button.dart';
 import '../../bloc/home_bloc.dart';
 import '../../bloc/home_event.dart';
 import '../../bloc/home_state.dart';
@@ -90,16 +91,12 @@ class HomeDesktopLayout extends StatelessWidget {
   }
 
   Widget _buildRefreshButton(BuildContext context) {
-    return CustomBounceButton(
+    return LiquidBounceButton(
       onPressed: () => context.read<HomeBloc>().add(FetchRooms()),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(Icons.refresh, color: Colors.white70, size: 14),
-      ),
+      icon: Icons.refresh,
+      bgColor: Colors.white.withValues(alpha: 0.1),
+      size: 28,
+      iconSize: 14,
     );
   }
 

@@ -55,8 +55,9 @@ class E2EeClient {
 
   /// Encrypt JSON payload (returns Base64 ciphertext & nonce)
   static Future<Map<String, String>> encryptPayload(String jsonString) async {
-    if (_aesKey == null)
+    if (_aesKey == null) {
       throw Exception('E2EE not initialized with server key');
+    }
 
     final plaintext = utf8.encode(jsonString);
 
@@ -75,8 +76,9 @@ class E2EeClient {
     String nonceBase64,
     String ciphertextBase64,
   ) async {
-    if (_aesKey == null)
+    if (_aesKey == null) {
       throw Exception('E2EE not initialized with server key');
+    }
 
     final nonce = base64Decode(nonceBase64);
     final ciphertextWithTag = base64Decode(ciphertextBase64);

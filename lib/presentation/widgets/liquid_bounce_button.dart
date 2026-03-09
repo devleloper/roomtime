@@ -7,12 +7,16 @@ class LiquidBounceButton extends StatefulWidget {
   final VoidCallback onPressed;
   final IconData icon;
   final Color bgColor;
+  final double size;
+  final double iconSize;
 
   const LiquidBounceButton({
     super.key,
     required this.onPressed,
     required this.icon,
     required this.bgColor,
+    this.size = 60,
+    this.iconSize = 28,
   });
 
   @override
@@ -80,8 +84,8 @@ class _LiquidBounceButtonState extends State<LiquidBounceButton>
             defaultTargetPlatform == TargetPlatform.iOS);
 
     Widget innerContent = SizedBox(
-      width: 60,
-      height: 60,
+      width: widget.size,
+      height: widget.size,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -93,7 +97,7 @@ class _LiquidBounceButtonState extends State<LiquidBounceButton>
               widget.icon,
               key: ValueKey(widget.icon),
               color: Colors.white,
-              size: 28,
+              size: widget.iconSize,
             ),
           ),
           Positioned.fill(

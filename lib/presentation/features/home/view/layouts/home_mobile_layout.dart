@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../widgets/custom_bounce_button.dart';
 import '../../../../widgets/liquid_glass_container.dart';
+import '../../../../widgets/liquid_bounce_button.dart';
 import '../../bloc/home_bloc.dart';
 import '../../bloc/home_event.dart';
 import '../../bloc/home_state.dart';
@@ -69,18 +69,12 @@ class HomeMobileLayout extends StatelessWidget {
   }
 
   Widget _buildRefreshButton(BuildContext context) {
-    return CustomBounceButton(
-      onPressed: () {
-        context.read<HomeBloc>().add(FetchRooms());
-      },
-      child: LiquidGlassContainer(
-        borderRadius: 100,
-        blur: 12,
-        backgroundColor: AppColors.surface.withValues(alpha: 0.4),
-        borderColor: Colors.white.withValues(alpha: 0.15),
-        padding: const EdgeInsets.all(12),
-        child: const Icon(Icons.refresh, color: Colors.white, size: 24),
-      ),
+    return LiquidBounceButton(
+      onPressed: () => context.read<HomeBloc>().add(FetchRooms()),
+      icon: Icons.refresh,
+      bgColor: AppColors.surface.withValues(alpha: 0.4),
+      size: 48,
+      iconSize: 24,
     );
   }
 
