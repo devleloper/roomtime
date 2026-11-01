@@ -96,7 +96,7 @@ class ApiDataSource {
     return dio;
   }
 
-  Future<String> fetchToken(
+  Future<Map<String, dynamic>> fetchToken(
     String roomName,
     String participantName, {
     String? pin,
@@ -134,7 +134,10 @@ class ApiDataSource {
           data['ciphertext'],
         );
         final decryptedData = jsonDecode(decryptedJson) as Map<String, dynamic>;
-        return decryptedData['token'] as String;
+        return {
+          'token': decryptedData['token'] as String,
+          'isOwner': decryptedData['isOwner'] as bool? ?? false,
+        };
       } else {
         throw Exception('Failed to get token: ${response.data}');
       }
@@ -176,6 +179,68 @@ class ApiDataSource {
       }
     } on DioException catch (e) {
       throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  Future<void> endRoom(String roomName, String participantName) async {
+    try {
+      await _ensureE2EEInitialized();
+
+      final payload = jsonEncode({
+        'roomName': roomName,
+        'participant': participantName,
+      });
+
+      final encryptedBody = await E2EeClient.encryptPayload(payload);
+      encryptedBody['client_public_key'] = await E2EeClient.getClientPublicKeyBase64();
+
+      final response = await _dio.post(
+        '/rooms/end',
+        data: encryptedBody,
+        options: Options(
+          headers: {
+            'X-E2EE-Client-Key': await E2EeClient.getClientPublicKeyBase64(),
+          },
+        ),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to end room');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  Future<void> muteParticipant(String roomName, String participantName, String targetId, String trackIdentity) async {
+    try {
+      await _ensureE2EEInitialized();
+
+      final payload = jsonEncode({
+        'roomName': roomName,
+        'participant': participantName,
+        'targetId': targetId,
+        'trackIdentity': trackIdentity,
+      });
+
+      final encryptedBody = await E2EeClient.encryptPayload(payload);
+      encryptedBody['client_public_key'] = await E2EeClient.getClientPublicKeyBase64();
+
+      final response = await _dio.post(
+        '/rooms/mute',
+        data: encryptedBody,
+        options: Options(
+          headers: {
+            'X-E2EE-Client-Key': await E2EeClient.getClientPublicKeyBase64(),
+          },
+        ),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to mute participant');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
     }
   }
 }

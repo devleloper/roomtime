@@ -11,11 +11,12 @@ abstract class RoomEvent extends Equatable {
 class ConnectToRoom extends RoomEvent {
   final String roomName;
   final String participantName;
+  final String? pin;
 
-  const ConnectToRoom({required this.roomName, required this.participantName});
+  const ConnectToRoom({required this.roomName, required this.participantName, this.pin});
 
   @override
-  List<Object?> get props => [roomName, participantName];
+  List<Object?> get props => [roomName, participantName, pin];
 }
 
 class DisconnectRoom extends RoomEvent {}
@@ -63,3 +64,30 @@ class RoomNotificationReceived extends RoomEvent {
 }
 
 class ClearRoomNotification extends RoomEvent {}
+
+class AdminEndRoom extends RoomEvent {
+  final String roomName;
+  final String participantName;
+
+  const AdminEndRoom({required this.roomName, required this.participantName});
+
+  @override
+  List<Object?> get props => [roomName, participantName];
+}
+
+class AdminMuteParticipant extends RoomEvent {
+  final String roomName;
+  final String participantName;
+  final String targetId;
+  final String trackIdentity;
+
+  const AdminMuteParticipant({
+    required this.roomName,
+    required this.participantName,
+    required this.targetId,
+    required this.trackIdentity,
+  });
+
+  @override
+  List<Object?> get props => [roomName, participantName, targetId, trackIdentity];
+}

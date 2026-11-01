@@ -14,6 +14,7 @@ class RoomState extends Equatable {
   final int updateCount;
   final List<Participant> activeSpeakers;
   final String? notificationMessage;
+  final bool isOwner;
 
   const RoomState({
     this.status = RoomStatus.initial,
@@ -26,6 +27,7 @@ class RoomState extends Equatable {
     this.updateCount = 0,
     this.activeSpeakers = const [],
     this.notificationMessage,
+    this.isOwner = false,
   });
 
   RoomState copyWith({
@@ -39,6 +41,7 @@ class RoomState extends Equatable {
     int? updateCount,
     List<Participant>? activeSpeakers,
     String? notificationMessage,
+    bool? isOwner,
   }) {
     return RoomState(
       status: status ?? this.status,
@@ -51,6 +54,7 @@ class RoomState extends Equatable {
       updateCount: updateCount ?? this.updateCount,
       activeSpeakers: activeSpeakers ?? this.activeSpeakers,
       notificationMessage: notificationMessage ?? this.notificationMessage,
+      isOwner: isOwner ?? this.isOwner,
     );
   }
 
@@ -66,5 +70,6 @@ class RoomState extends Equatable {
     updateCount,
     activeSpeakers,
     notificationMessage,
+    isOwner,
   ];
 }

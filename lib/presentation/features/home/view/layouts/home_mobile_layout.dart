@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../theme/app_colors.dart';
 import '../../../../widgets/custom_bounce_button.dart';
 import '../../../../widgets/liquid_glass_container.dart';
@@ -9,6 +8,7 @@ import '../../../../widgets/liquid_bounce_button.dart';
 import '../../bloc/home_bloc.dart';
 import '../../bloc/home_event.dart';
 import '../../bloc/home_state.dart';
+import '../../widgets/join_room_dialog.dart';
 
 class HomeMobileLayout extends StatelessWidget {
   final HomeState state;
@@ -82,9 +82,10 @@ class HomeMobileLayout extends StatelessWidget {
     return CustomBounceButton(
       borderRadius: 16,
       onPressed: () {
-        final roomName =
-            'Room-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-        context.go('/room/$roomName?owner=true');
+        showDialog(
+          context: context,
+          builder: (context) => const JoinRoomDialog(isCreating: true),
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 18),
@@ -152,7 +153,10 @@ class HomeMobileLayout extends StatelessWidget {
       borderRadius: 16,
       overlayOpacity: 0.0,
       onPressed: () {
-        context.go('/room/$roomName');
+        showDialog(
+          context: context,
+          builder: (context) => JoinRoomDialog(initialRoomName: roomName),
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16.0),

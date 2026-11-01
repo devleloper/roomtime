@@ -20,8 +20,9 @@ import '../bloc/room_state.dart';
 
 class RoomScreen extends StatefulWidget {
   final String roomName;
+  final String? pin;
 
-  const RoomScreen({super.key, required this.roomName});
+  const RoomScreen({super.key, required this.roomName, this.pin});
 
   @override
   State<RoomScreen> createState() => _RoomScreenState();
@@ -116,6 +117,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
                 roomName: widget.roomName,
                 participantName:
                     'User_${DateTime.now().millisecondsSinceEpoch}',
+                pin: widget.pin,
               ),
             );
           }
@@ -203,6 +205,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
             participant: state.participants.first,
             isActive: false, // No active speaker highlight in 1-on-1 calls
             isFullScreen: true,
+            onLongPress: () => _handleParticipantLongPress(context, state, state.participants.first),
             child: _buildFullscreenVideo(
               state.participants.first,
               fit: VideoViewFit.cover,
@@ -250,6 +253,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
                 participant: fullscreenParticipant,
                 isActive: false, // No active speaker highlight in 1-on-1 calls
                 isFullScreen: true,
+                onLongPress: () => _handleParticipantLongPress(context, state, fullscreenParticipant),
                 child: _buildFullscreenVideo(
                   fullscreenParticipant,
                   fit: fullscreenFit,
@@ -272,6 +276,7 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
                 key: ValueKey(pipParticipant.sid),
                 participant: pipParticipant,
                 isActive: false, // No active speaker highlight in 1-on-1 calls
+                onLongPress: () => _handleParticipantLongPress(context, state, pipParticipant),
                 child: _buildVideoView(pipParticipant, fit: VideoViewFit.cover),
               ),
             ),
@@ -430,13 +435,18 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       child: MissionControlGrid(
         participants: state.participants,
         activeSpeakers: state.activeSpeakers,
-        buildVideoView: (participant, {fit = VideoViewFit.cover}) =>
-            _buildVideoView(participant, fit: fit),
+        buildVideoView: (participant, {fit = VideoViewFit.cover}) => ParticipantTile(
+          participant: participant,
+          onLongPress: () => _handleParticipantLongPress(context, state, participant),
+          child: _buildVideoView(participant, fit: fit),
+        ),
       ),
     );
   }
 
   Widget _buildMediaControls(BuildContext context, RoomState state) {
+    final isAdmin = state.isOwner;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -461,6 +471,24 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
           () => context.read<RoomBloc>().add(SwitchCamera()),
         ),
         const SizedBox(width: 20),
+        if (isAdmin) ...[
+          _buildMediaButton(Icons.dangerous, () {
+            // End room for everyone
+            final bloc = context.read<RoomBloc>();
+            bloc.add(AdminEndRoom(
+              roomName: widget.roomName,
+              participantName: state.room!.localParticipant!.identity,
+            ));
+            bloc.add(ToggleMicrophone(false));
+            bloc.add(ToggleCamera(false));
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          }, color: AppColors.error),
+          const SizedBox(width: 20),
+        ],
         _buildMediaButton(Icons.call_end, () {
           final bloc = context.read<RoomBloc>();
           bloc.add(ToggleMicrophone(false));
@@ -493,6 +521,48 @@ class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
       },
       icon: icon,
       bgColor: bgColor,
+    );
+  }
+  void _handleParticipantLongPress(BuildContext context, RoomState state, Participant target) {
+    final localParticipant = state.room?.localParticipant;
+    final isAdmin = state.isOwner;
+
+    if (!isAdmin || target == localParticipant || target is! RemoteParticipant) {
+      return;
+    }
+
+    final targetAudioTrack = target.audioTrackPublications.firstWhereOrNull((p) => p.track != null && !p.muted);
+    if (targetAudioTrack == null) {
+      return; // Already muted or no audio track
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Admin Action', style: TextStyle(color: Colors.white)),
+          content: Text('Mute ${target.identity}?', style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => context.pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () {
+                context.read<RoomBloc>().add(AdminMuteParticipant(
+                  roomName: widget.roomName,
+                  participantName: localParticipant!.identity,
+                  targetId: target.identity,
+                  trackIdentity: targetAudioTrack.sid,
+                ));
+                context.pop();
+              },
+              child: const Text('Mute', style: TextStyle(color: AppColors.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

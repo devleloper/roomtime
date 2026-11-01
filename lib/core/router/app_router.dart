@@ -12,7 +12,8 @@ final GoRouter appRouter = GoRouter(
       path: '/room/:roomName',
       builder: (context, state) {
         final roomName = state.pathParameters['roomName'] ?? 'unknown';
-        return RoomScreen(roomName: roomName);
+        final pin = state.uri.queryParameters['pin'];
+        return RoomScreen(roomName: roomName, pin: pin);
       },
     ),
   ],

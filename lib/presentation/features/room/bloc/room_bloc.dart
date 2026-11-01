@@ -26,6 +26,8 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     on<ActiveSpeakersChanged>(_onActiveSpeakersChanged);
     on<RoomNotificationReceived>(_onRoomNotificationReceived);
     on<ClearRoomNotification>(_onClearRoomNotification);
+    on<AdminEndRoom>(_onAdminEndRoom);
+    on<AdminMuteParticipant>(_onAdminMuteParticipant);
   }
 
   Future<void> _onConnectToRoom(
@@ -48,14 +50,18 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         }
       }
 
-      final token = await _roomRepository.getJoinToken(
+      final data = await _roomRepository.getJoinToken(
         event.roomName,
         event.participantName,
+        pin: event.pin,
       );
 
+      final token = data['token'] as String;
+      final isOwner = data['isOwner'] as bool;
+
       // Yield to the event loop to ensure the CircularProgressIndicator
-      // has time to render and animate smoothly before heavy C++ bindings block
-      await Future.delayed(const Duration(milliseconds: 150));
+      // gets rendered before the heavy WebRTC connection starts.
+      await Future.delayed(const Duration(milliseconds: 100));
 
       final room = await _roomRepository.connectToRoom(token);
 
@@ -95,6 +101,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
           room: room,
           isCameraEnabled: true,
           isMicEnabled: true,
+          isOwner: isOwner,
           participants: [
             room.localParticipant!,
             ...room.remoteParticipants.values,
@@ -214,12 +221,36 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     ClearRoomNotification event,
     Emitter<RoomState> emit,
   ) {
-    // Emit state change only if message exists
-    // Instead of passing null (which copyWith might ignore if not careful),
-    // let's adjust copyWith or just pass empty string.
-    // Wait, copyWith usually takes nullable as "skip".
-    // Let me check copyWith. If it takes null to mean "don't change", I have to use a wrapper or pass empty.
     emit(state.copyWith(notificationMessage: ""));
+  }
+
+  Future<void> _onAdminEndRoom(
+    AdminEndRoom event,
+    Emitter<RoomState> emit,
+  ) async {
+    try {
+      await _roomRepository.endRoom(event.roomName, event.participantName);
+      add(const RoomNotificationReceived("Room ended by Admin"));
+    } catch (e) {
+      add(RoomNotificationReceived("Failed to end room: $e"));
+    }
+  }
+
+  Future<void> _onAdminMuteParticipant(
+    AdminMuteParticipant event,
+    Emitter<RoomState> emit,
+  ) async {
+    try {
+      await _roomRepository.muteParticipant(
+        event.roomName,
+        event.participantName,
+        event.targetId,
+        event.trackIdentity,
+      );
+      add(const RoomNotificationReceived("Participant muted"));
+    } catch (e) {
+      add(RoomNotificationReceived("Failed to mute participant: $e"));
+    }
   }
 
   @override

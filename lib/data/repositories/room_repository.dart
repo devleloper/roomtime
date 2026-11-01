@@ -15,7 +15,7 @@ class RoomRepository implements IRoomRepository {
   RoomRepository(this._apiDataSource, this._liveKitDataSource);
 
   @override
-  Future<String> getJoinToken(
+  Future<Map<String, dynamic>> getJoinToken(
     String roomName,
     String participantName, {
     String? pin,
@@ -46,5 +46,14 @@ class RoomRepository implements IRoomRepository {
   @override
   Future<void> switchCamera() async {
     await _liveKitDataSource.switchCamera();
+  }
+  @override
+  Future<void> endRoom(String roomName, String participantName) async {
+    await _apiDataSource.endRoom(roomName, participantName);
+  }
+
+  @override
+  Future<void> muteParticipant(String roomName, String participantName, String targetId, String trackIdentity) async {
+    await _apiDataSource.muteParticipant(roomName, participantName, targetId, trackIdentity);
   }
 }

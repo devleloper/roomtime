@@ -1,7 +1,7 @@
 import 'package:livekit_client/livekit_client.dart';
 
 abstract class IRoomRepository {
-  Future<String> getJoinToken(
+  Future<Map<String, dynamic>> getJoinToken(
     String roomName,
     String participantName, {
     String? pin,
@@ -11,4 +11,6 @@ abstract class IRoomRepository {
   Future<void> toggleMicrophone(bool enabled);
   Future<void> toggleCamera(bool enabled);
   Future<void> switchCamera();
+  Future<void> endRoom(String roomName, String participantName);
+  Future<void> muteParticipant(String roomName, String participantName, String targetId, String trackIdentity);
 }

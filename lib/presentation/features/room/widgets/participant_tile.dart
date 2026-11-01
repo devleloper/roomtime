@@ -7,6 +7,7 @@ class ParticipantTile extends StatefulWidget {
   final Widget child;
   final bool isActive;
   final bool isFullScreen;
+  final VoidCallback? onLongPress;
 
   const ParticipantTile({
     super.key,
@@ -14,6 +15,7 @@ class ParticipantTile extends StatefulWidget {
     required this.child,
     this.isActive = false,
     this.isFullScreen = false,
+    this.onLongPress,
   });
 
   @override
@@ -63,43 +65,46 @@ class _ParticipantTileState extends State<ParticipantTile>
     return AnimatedBuilder(
       animation: _entranceController,
       builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: widget.isFullScreen
-                  ? BorderRadius.zero
-                  : BorderRadius.circular(16),
-              border: widget.isActive && !widget.isFullScreen
-                  ? Border.all(color: Colors.greenAccent, width: 3.0)
-                  : null,
-              boxShadow: widget.isActive && !widget.isFullScreen
-                  ? [
-                      BoxShadow(
-                        color: Colors.greenAccent.withValues(alpha: 0.3),
-                        blurRadius: 15,
-                        spreadRadius: 2,
+        return GestureDetector(
+          onLongPress: widget.onLongPress,
+          child: Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: widget.isFullScreen
+                    ? BorderRadius.zero
+                    : BorderRadius.circular(16),
+                border: widget.isActive && !widget.isFullScreen
+                    ? Border.all(color: Colors.greenAccent, width: 3.0)
+                    : null,
+                boxShadow: widget.isActive && !widget.isFullScreen
+                    ? [
+                        BoxShadow(
+                          color: Colors.greenAccent.withValues(alpha: 0.3),
+                          blurRadius: 15,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: ClipRRect(
+                borderRadius: widget.isFullScreen
+                    ? BorderRadius.zero
+                    : BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    widget.child,
+                    if (_blurAnimation.value > 0.1)
+                      LiquidGlassContainer(
+                        blur: _blurAnimation.value,
+                        backgroundColor: Colors.transparent,
+                        borderColor: Colors.transparent,
+                        borderRadius: 12,
+                        child: Container(),
                       ),
-                    ]
-                  : null,
-            ),
-            child: ClipRRect(
-              borderRadius: widget.isFullScreen
-                  ? BorderRadius.zero
-                  : BorderRadius.circular(12),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  widget.child,
-                  if (_blurAnimation.value > 0.1)
-                    LiquidGlassContainer(
-                      blur: _blurAnimation.value,
-                      backgroundColor: Colors.transparent,
-                      borderColor: Colors.transparent,
-                      borderRadius: 12,
-                      child: Container(),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
