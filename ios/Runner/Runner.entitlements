@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal links for invites https://<host>/r/<code>.
+	     TODO(domain): set DEEP_LINK_HOST in the Runner build settings and publish
+	     apple-app-site-association on that host. Requires a team with the
+	     Associated Domains capability, so only the Release configuration uses
+	     this file; Debug and Profile build with a personal team. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:$(DEEP_LINK_HOST)</string>
+	</array>
+</dict>
+</plist>

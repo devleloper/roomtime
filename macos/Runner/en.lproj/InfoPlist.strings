@@ -1,0 +1,3 @@
+/* Camera and microphone permission prompts (English). */
+"NSCameraUsageDescription" = "RoomTime uses the camera to show your video to the people in your call.";
+"NSMicrophoneUsageDescription" = "RoomTime uses the microphone so the people in your call can hear you.";

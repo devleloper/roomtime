@@ -1,0 +1,3 @@
+/* Camera and microphone permission prompts (Russian). */
+"NSCameraUsageDescription" = "RoomTime использует камеру, чтобы собеседники видели вас во время звонка.";
+"NSMicrophoneUsageDescription" = "RoomTime использует микрофон, чтобы собеседники слышали вас во время звонка.";

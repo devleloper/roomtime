@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>
@@ -28,5 +33,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSCameraUsageDescription</key>
+	<string>RoomTime uses the camera to show your video to the people in your call.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>RoomTime uses the microphone so the people in your call can hear you.</string>
 </dict>
 </plist>

@@ -4,13 +4,21 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
-	<key>com.apple.security.network.server</key>
-	<true/>
+	<!-- Outgoing only: API, LiveKit signalling and media (ICE answers arrive
+	     on the sockets the app opened). No incoming connections. -->
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.device.camera</key>
 	<true/>
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
+	<!-- Data-protection keychain for the guest id and owner tokens
+	     (flutter_secure_storage). Requires signing with a development team;
+	     Debug/Profile use DebugProfile.entitlements without it, so unsigned
+	     local builds run and keep that data in memory only. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)dev.devlet.roomtime</string>
+	</array>
 </dict>
 </plist>
