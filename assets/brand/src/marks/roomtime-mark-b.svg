@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!--
+    RoomTime mark, option B "Doorway R". Original work, hand-authored for the
+    RoomTime project (2026). Master geometry for ../../tool/build.py
+    (`build.py --mark B`, the default); edit this file, not the outputs.
+    lib/presentation/widgets/room_time_logo.dart paints the same paths.
+
+    A geometric capital R whose counter is an arched doorway.
+    Construction on a 96-unit grid (glyph 68 x 74, centred on the artboard):
+      stem     x 14..35 (21 wide), y 11..85.
+      bowl     top y=11; right side a semicircle, radius 25, centre (46,36);
+               bottom y=61.
+      leg      parallelogram, slope 3:4 (dx:dy), feet x 60..82 on y=85; its
+               right edge meets the bowl arc at (60.52,56.35).
+      counter  the doorway, cut out: x 35..57 (22 wide), arch radius 11
+               concentric with the bowl (centre (46,36)), standing on y=49.
+               Bars around it: top 14, right 14, bottom 12.
+    One color; the doorway is a hole (fill-rule evenodd).
+  -->
+  <title>RoomTime</title>
+  <path id="mark" fill="#00AEFF" fill-rule="evenodd" d="M14 11H46A25 25 0 0 1 60.52 56.35L82 85H60L42 61H35V85H14Z M35 49V36A11 11 0 0 1 57 36V49Z"/>
+</svg>

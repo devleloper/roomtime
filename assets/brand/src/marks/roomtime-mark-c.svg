@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!--
+    RoomTime mark, option C "Door swing". Original work, hand-authored for
+    the RoomTime project (2026). Master geometry for ../../tool/build.py
+    (`build.py --mark C`); edit this file, not the outputs.
+
+    A door drawn the way an architect draws it on a floor plan: the open
+    leaf and its quarter-circle swing. The same quarter turn reads as a
+    clock hand sweeping a quarter hour: a room, and time.
+    Construction on a 96-unit grid (glyph 70 x 52, centred on the artboard):
+      leaf    x 13..25 (12 wide), y 22..74, round top (radius 6).
+      swing   quarter disc, radius 52 = leaf length, hinge (31,74), from
+              12 o'clock (31,22) to 3 o'clock (83,74). Gap leaf-swing 6.
+  -->
+  <title>RoomTime</title>
+  <path id="mark" fill="#00AEFF" fill-rule="evenodd" d="M13 28A6 6 0 0 1 25 28V74H13Z M31 74V22A52 52 0 0 1 83 74Z"/>
+</svg>

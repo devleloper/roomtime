@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!--
+    RoomTime mark, option A "Open door" (reference). Original work,
+    hand-authored for the RoomTime project (2026). Master geometry for
+    ../../tool/build.py (`build.py --mark A`); edit this file, not the outputs.
+
+    Construction on a 96-unit grid:
+      bubble  arch-topped speech bubble. Arch radius 36 centred at (48,46);
+              straight sides x=12 and x=84; bottom edge y=86 with a 14-unit
+              corner on the right; the tail runs from (32,86) to the tip
+              (12,96) on the extended left side.
+      door    the open doorway, cut out of the bubble: 26 wide (x 35..61),
+              arch radius 13 centred at (48,45), standing on y=74.
+    One color; the door is a hole (fill-rule evenodd).
+  -->
+  <title>RoomTime</title>
+  <path id="mark" fill="#00AEFF" fill-rule="evenodd" d="M12 46A36 36 0 0 1 84 46V72A14 14 0 0 1 70 86H32L12 96Z M35 74V45A13 13 0 0 1 61 45V74Z"/>
+</svg>
