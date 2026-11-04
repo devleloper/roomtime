@@ -2,8 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- RoomTime privacy manifest (iOS app target). Evidence for every entry:
-	     docs/release/store/app-store.md, section "Privacy manifest". No analytics,
+	<!-- RoomTime privacy manifest (iOS app target). No analytics,
 	     ads or tracking SDKs are linked. -->
 	<key>NSPrivacyTracking</key>
 	<false/>

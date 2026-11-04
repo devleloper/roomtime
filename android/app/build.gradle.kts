@@ -69,7 +69,7 @@ tasks.configureEach {
     if (name == "assembleRelease" || name == "bundleRelease") {
         doFirst {
             if (!rootProject.file("key.properties").exists()) {
-                throw GradleException("Release signing needs android/key.properties (see docs/release/store/google-play.md)")
+                throw GradleException("Release signing needs android/key.properties (see README.md, "Release builds")")
             }
         }
     }

@@ -47,3 +47,21 @@ app.*.map.json
 # Local build-time config (see config/README.md); the example is committed
 /config/*.json
 !/config/*.example.json
+
+# Signing material and secrets (never committed)
+key.properties
+*.jks
+*.keystore
+*.p12
+*.p8
+*.pem
+*.key
+*.mobileprovision
+.env
+.env.*
+
+# Local tool state
+.qa-artifacts/
+.claude/
+CLAUDE.md
+CLAUDE.local.md

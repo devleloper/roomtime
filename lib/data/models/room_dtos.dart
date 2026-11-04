@@ -139,9 +139,9 @@ RoomJoin roomJoinFromJson(Json json, {bool requireSecureMedia = kReleaseMode}) {
 }
 
 /// Checks the LiveKit URL from a join response (SEC-17). Release builds
-/// accept `wss://` and, for the local compose stack, `ws://` on a loopback
-/// host only (that traffic never leaves the device; QA D3: a release web
-/// build against `make up` failed every join with a generic error). Debug and
+/// accept `wss://` and, for a local development backend, `ws://` on a
+/// loopback host only (that traffic never leaves the device; QA D3: a release
+/// web build against a local backend failed every join). Debug and
 /// profile builds accept any `ws://` host. Anything else is a malformed
 /// response.
 @visibleForTesting

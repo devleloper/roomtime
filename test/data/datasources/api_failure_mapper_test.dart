@@ -52,9 +52,9 @@ const specCodes = <String, (int, Failure)>{
   'server_busy': (503, ServerBusyFailure()),
 };
 
-/// `ErrorCode.enum` from the OpenAPI spec (run from `client/`).
+/// `ErrorCode.enum` from the OpenAPI spec (run from the repository root).
 List<String> errorCodesFromSpec() {
-  final lines = File('../docs/api/openapi.yaml').readAsLinesSync();
+  final lines = File('docs/api/openapi.yaml').readAsLinesSync();
   final start = lines.indexWhere((l) => l.trim() == 'ErrorCode:');
   final codes = <String>[];
   for (final line in lines.skip(start + 3)) {

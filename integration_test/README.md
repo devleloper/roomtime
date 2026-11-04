@@ -1,6 +1,7 @@
 # Integration regression list
 
-Live-stack suites (no mocks). Start the stack (`make up ENV_FILE=...`), then run from `client/`:
+Live-stack suites (no mocks). Start a RoomTime backend reachable at the `API_BASE_URL` of
+`config/local.json`, then run from the repository root:
 
 ```
 flutter test integration_test/flows/<file> -d <device> --dart-define-from-file=config/local.json

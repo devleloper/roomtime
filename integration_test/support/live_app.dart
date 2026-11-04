@@ -1,8 +1,9 @@
 // Launch and finder helpers for integration tests that run the real app
-// against the local compose stack (docs/ops/local-stack.md).
+// against a running RoomTime backend (no mocks).
 //
 // Build with `--dart-define-from-file=config/local.example.json`; on Android
-// run `make android-reverse` first so the emulator reaches localhost:8080.
+// run `adb reverse tcp:8080 tcp:8080` first so the emulator reaches
+// localhost:8080.
 
 import 'dart:convert';
 import 'dart:io';

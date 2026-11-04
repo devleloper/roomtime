@@ -18,7 +18,7 @@ import 'package:roomtime/presentation/widgets/widgets.dart';
 /// Always a smoke test. With `ORIGINAL_PREVIEW_OUT=<path>.png` it writes
 /// the image for docs/design (no golden files):
 ///
-///     ORIGINAL_PREVIEW_OUT=../docs/design/img/original-widgets.png \
+///     ORIGINAL_PREVIEW_OUT=docs/design/img/original-widgets.png \
 ///       flutter test test/presentation/widgets/original_widgets_preview_test.dart
 void main() {
   testWidgets('original widgets preview', (tester) async {

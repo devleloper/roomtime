@@ -1,4 +1,3 @@
-// Proposed: client/test/presentation/widgets/brand_test.dart (owner: flutter-engineer).
 import 'dart:io';
 
 import 'package:roomtime/presentation/theme/app_palette.dart';
