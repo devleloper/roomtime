@@ -1,30 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'core/di/injection.dart';
-import 'core/router/app_router.dart';
-import 'presentation/theme/app_theme.dart';
-import 'presentation/features/auth/bloc/auth_bloc.dart';
-import 'presentation/features/auth/bloc/auth_event.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
-void main() async {
+import 'core/di/injection.dart';
+import 'app/app_router.dart';
+import 'presentation/theme/theme.dart';
+import 'l10n/l10n.dart';
+
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Invite links are `https://<host>/r/<code>`; the web build reads the path,
+  // so the edge must serve index.html for unknown paths.
+  usePathUrlStrategy();
   configureDependencies();
-  runApp(const FamilyCallsApp());
+  runApp(const RoomTimeApp());
 }
 
-class FamilyCallsApp extends StatelessWidget {
-  const FamilyCallsApp({super.key});
+class RoomTimeApp extends StatelessWidget {
+  const RoomTimeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => getIt<AuthBloc>()..add(AuthCheckRequested()),
-      child: MaterialApp.router(
-        title: 'FamilyCalls',
-        theme: AppTheme.darkTheme,
-        routerConfig: appRouter,
-        debugShowCheckedModeBanner: false,
-      ),
+    // FaceTime-style: every screen sits on the camera or black (flows.md §14).
+    return MaterialApp.router(
+      // Brand name, never translated; the locale follows the system and
+      // falls back to English (template) for unsupported languages.
+      onGenerateTitle: (context) => context.l10n.appName,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      theme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
+      routerConfig: appRouter,
+      debugShowCheckedModeBanner: false,
     );
   }
 }

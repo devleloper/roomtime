@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
+import '../theme/app_colors.dart';
+import '../theme/app_tokens.dart';
+
+/// Card of dev-0.1.6 (original API and look): `surface` fill, radius 24,
+/// soft drop shadow. Purely visual; put headings and buttons inside as
+/// usual.
 class CustomCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -8,7 +13,7 @@ class CustomCard extends StatelessWidget {
   const CustomCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(AppSpacing.card),
   });
 
   @override
@@ -17,14 +22,8 @@ class CustomCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        borderRadius: AppRadius.xlAll,
+        boxShadow: AppShadows.card,
       ),
       child: child,
     );

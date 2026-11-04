@@ -1,0 +1,967 @@
+{
+  "@@locale": "en",
+  "appName": "RoomTime",
+  "@appName": {
+    "description": "Brand name. Never translated."
+  },
+  "commonShowPassword": "Show password",
+  "@commonShowPassword": {
+    "description": "Tooltip of the eye button in password fields."
+  },
+  "commonHidePassword": "Hide password",
+  "@commonHidePassword": {
+    "description": "Tooltip of the eye button in password fields."
+  },
+  "homeCreateRoom": "Create Room",
+  "@homeCreateRoom": {
+    "description": "Home call to action and the title of the create dialog (dev-0.1.6 wording)"
+  },
+  "homeCreate": "Create",
+  "@homeCreate": {
+    "description": "Primary button of the Create Room dialog"
+  },
+  "homePasswordOptional": "Password (optional)",
+  "@homePasswordOptional": {
+    "description": "Password field label in the Create Room dialog"
+  },
+  "homeCameraPreview": "Camera preview",
+  "@homeCameraPreview": {
+    "description": "Accessible name of the round camera preview toggle on Home"
+  },
+  "homeJoinWithCode": "Join with code",
+  "@homeJoinWithCode": {
+    "description": "Section label above the room code field on Home"
+  },
+  "homeJoinLabel": "Code or link",
+  "@homeJoinLabel": {
+    "description": "Home screen (flows.md §1): label of the join field."
+  },
+  "homeJoin": "Join",
+  "@homeJoin": {
+    "description": "Home screen (flows.md §1): button next to the join field."
+  },
+  "homeChecking": "Checking…",
+  "@homeChecking": {
+    "description": "Home screen (flows.md §1): join button label while the code is checked."
+  },
+  "homeRecent": "Recent rooms",
+  "@homeRecent": {
+    "description": "Home screen (flows.md §1): section title."
+  },
+  "homeRecentEmpty": "Rooms you create or join appear here.",
+  "@homeRecentEmpty": {
+    "description": "Home screen (flows.md §1): empty state of recent rooms."
+  },
+  "homeRecentHost": "You created it",
+  "@homeRecentHost": {
+    "description": "Home screen (flows.md §1): note on a recent room the user created."
+  },
+  "homeRecentRemoveFor": "Remove {room} from recent",
+  "@homeRecentRemoveFor": {
+    "description": "Home screen (flows.md §1): screen reader label of the remove button.",
+    "placeholders": {
+      "room": {
+        "type": "String"
+      }
+    }
+  },
+  "homeRecentRemoved": "Removed from recent",
+  "@homeRecentRemoved": {
+    "description": "Home screen (flows.md §1): snackbar after removing a recent room."
+  },
+  "homeUndo": "Undo",
+  "@homeUndo": {
+    "description": "Home screen (flows.md §1): snackbar action that restores a removed recent room."
+  },
+  "homeRecentRow": "{room}, {when}",
+  "@homeRecentRow": {
+    "description": "Home screen (flows.md §1): screen reader label of a recent room: name, time ago.",
+    "placeholders": {
+      "room": {
+        "type": "String"
+      },
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "homeJustNow": "just now",
+  "@homeJustNow": {
+    "description": "Home screen (flows.md §1): time ago under one minute."
+  },
+  "homeMinutesAgo": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "@homeMinutesAgo": {
+    "description": "Home screen (flows.md §1): time ago in minutes.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeHoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@homeHoursAgo": {
+    "description": "Home screen (flows.md §1): time ago in hours.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeYesterday": "yesterday",
+  "@homeYesterday": {
+    "description": "Home screen (flows.md §1): time ago, one day."
+  },
+  "homeDaysAgo": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "@homeDaysAgo": {
+    "description": "Home screen (flows.md §1): time ago in days.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeInvalidCode": "That doesn't look like a room code. Codes have 10 letters, like abc-defg-hjk.",
+  "@homeInvalidCode": {
+    "description": "Home screen (flows.md §1): join field error."
+  },
+  "homeInvalidInviteLink": "This invite link is invalid.",
+  "@homeInvalidInviteLink": {
+    "description": "Home screen: one-shot notice after opening an invite link (/r/<code>) whose code is malformed."
+  },
+  "homeNotARoomLink": "This link isn't a room invite.",
+  "@homeNotARoomLink": {
+    "description": "Home screen (flows.md §1): join field error for a foreign link."
+  },
+  "homeCancel": "Cancel",
+  "@homeCancel": {
+    "description": "Home screen (flows.md §1): dialog button."
+  },
+  "homeCreateNameLabel": "Room name (optional)",
+  "@homeCreateNameLabel": {
+    "description": "New room sheet (flows.md §2): field label."
+  },
+  "homeCreatePasswordTooShort": "Use at least 4 characters",
+  "@homeCreatePasswordTooShort": {
+    "description": "New room sheet (flows.md §2): password validation error."
+  },
+  "homeCreatePasswordTooLong": "Too long: up to 64 Latin characters (36 in Cyrillic)",
+  "@homeCreatePasswordTooLong": {
+    "description": "New room sheet (flows.md §2): password validation error."
+  },
+  "homeCreateRetry": "Try again",
+  "@homeCreateRetry": {
+    "description": "New room sheet (flows.md §2): retry button after an error."
+  },
+  "roomFinding": "Finding the room…",
+  "@roomFinding": {
+    "description": "Lobby (flows.md §4): loading state."
+  },
+  "roomTitleUnnamed": "Room {code}",
+  "@roomTitleUnnamed": {
+    "description": "Lobby (flows.md §4): title of a room without a name.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "roomNameLabel": "Your name",
+  "@roomNameLabel": {
+    "description": "Lobby (flows.md §4): field label."
+  },
+  "roomNameRequired": "Enter your name",
+  "@roomNameRequired": {
+    "description": "Lobby (flows.md §4): validation error."
+  },
+  "roomNameTooLong": "Use at most 32 characters",
+  "@roomNameTooLong": {
+    "description": "Lobby (flows.md §4): validation error."
+  },
+  "roomPasswordLabel": "Room password",
+  "@roomPasswordLabel": {
+    "description": "Lobby (flows.md §4): field label."
+  },
+  "roomPasswordHelper": "Ask the person who invited you",
+  "@roomPasswordHelper": {
+    "description": "Lobby (flows.md §4): password field helper."
+  },
+  "roomPasswordRequired": "This room needs a password.",
+  "@roomPasswordRequired": {
+    "description": "Lobby (flows.md §4): password error."
+  },
+  "roomWrongPassword": "Wrong password. Check it and try again.",
+  "@roomWrongPassword": {
+    "description": "Lobby (flows.md §4): password error."
+  },
+  "roomTooManyAttempts": "Too many attempts. Try again in {mmss}.",
+  "@roomTooManyAttempts": {
+    "description": "Lobby (flows.md §4): lockout countdown; mmss is like 0:42.",
+    "placeholders": {
+      "mmss": {
+        "type": "String"
+      }
+    }
+  },
+  "roomCanTryAgain": "You can try again",
+  "@roomCanTryAgain": {
+    "description": "Lobby (flows.md §4): announced when the lockout ends."
+  },
+  "roomJoin": "Join call",
+  "@roomJoin": {
+    "description": "Lobby (flows.md §4): primary button."
+  },
+  "roomJoining": "Joining…",
+  "@roomJoining": {
+    "description": "Lobby (flows.md §4): primary button while joining."
+  },
+  "roomLockedNotice": "The host isn't letting new people in right now.",
+  "@roomLockedNotice": {
+    "description": "Lobby (flows.md §4): banner."
+  },
+  "roomHostNotice": "You are the host of this room.",
+  "@roomHostNotice": {
+    "description": "Lobby (flows.md §4): banner."
+  },
+  "roomBack": "Back",
+  "@roomBack": {
+    "description": "Lobby (flows.md §4): back button."
+  },
+  "roomPreviewOn": "Camera preview, camera on",
+  "@roomPreviewOn": {
+    "description": "Lobby (flows.md §4): screen reader label of the preview."
+  },
+  "roomPreviewOff": "Camera preview, camera off",
+  "@roomPreviewOff": {
+    "description": "Lobby (flows.md §4): screen reader label of the preview."
+  },
+  "roomPermExplainer": "Allow camera and microphone so others can see and hear you.",
+  "@roomPermExplainer": {
+    "description": "Permissions (flows.md §4): explainer."
+  },
+  "roomPermAllow": "Allow",
+  "@roomPermAllow": {
+    "description": "Permissions (flows.md §4): button."
+  },
+  "roomCameraBlocked": "Camera is blocked",
+  "@roomCameraBlocked": {
+    "description": "Permissions (flows.md §4): banner."
+  },
+  "roomMicBlocked": "Microphone is blocked. Others won't hear you.",
+  "@roomMicBlocked": {
+    "description": "Permissions (flows.md §4): banner."
+  },
+  "roomOpenSettings": "Open settings",
+  "@roomOpenSettings": {
+    "description": "Permissions (flows.md §4): button."
+  },
+  "roomCameraBlockedWeb": "Camera is blocked. Allow access in the browser's address bar, then reload the page.",
+  "@roomCameraBlockedWeb": {
+    "description": "Permissions (flows.md §4): banner on the web."
+  },
+  "roomCameraBlockedDesktop": "Camera is blocked. Allow access in System Settings, Privacy & Security.",
+  "@roomCameraBlockedDesktop": {
+    "description": "Permissions (flows.md §4): banner on macOS."
+  },
+  "roomMicBlockedWeb": "Microphone is blocked. Others won't hear you. Allow access in the browser's address bar, then reload the page.",
+  "@roomMicBlockedWeb": {
+    "description": "Permissions (flows.md §4): banner on the web."
+  },
+  "roomMicBlockedDesktop": "Microphone is blocked. Others won't hear you. Allow access in System Settings, Privacy & Security.",
+  "@roomMicBlockedDesktop": {
+    "description": "Permissions (flows.md §4): banner on macOS."
+  },
+  "roomMic": "Microphone",
+  "@roomMic": {
+    "description": "Call controls (flows.md §5, §11): control label."
+  },
+  "roomCamera": "Camera",
+  "@roomCamera": {
+    "description": "Call controls (flows.md §5, §11): control label."
+  },
+  "roomFlip": "Flip camera",
+  "@roomFlip": {
+    "description": "Call controls (flows.md §5, §11): control label."
+  },
+  "roomSpeaker": "Speaker",
+  "@roomSpeaker": {
+    "description": "Call controls (flows.md §5, §11): audio output label (loudspeaker)."
+  },
+  "roomEarpiece": "Phone",
+  "@roomEarpiece": {
+    "description": "Call controls (flows.md §5, §11): audio output label (earpiece)."
+  },
+  "roomInvite": "Invite",
+  "@roomInvite": {
+    "description": "Call controls (flows.md §5, §11): control label."
+  },
+  "roomParticipants": "Participants",
+  "@roomParticipants": {
+    "description": "Call controls (flows.md §5, §11): control label."
+  },
+  "roomLeave": "Leave",
+  "@roomLeave": {
+    "description": "Call controls (flows.md §5, §11): leave button label."
+  },
+  "roomMicTurnOff": "Turn off microphone ({shortcut})",
+  "@roomMicTurnOff": {
+    "description": "Call controls (flows.md §5, §11): tooltip; shortcut is like Ctrl+D.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "roomMicTurnOn": "Turn on microphone ({shortcut})",
+  "@roomMicTurnOn": {
+    "description": "Call controls (flows.md §5, §11): tooltip; shortcut is like Ctrl+D.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "roomCameraTurnOff": "Turn off camera ({shortcut})",
+  "@roomCameraTurnOff": {
+    "description": "Call controls (flows.md §5, §11): tooltip; shortcut is like Ctrl+E.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "roomCameraTurnOn": "Turn on camera ({shortcut})",
+  "@roomCameraTurnOn": {
+    "description": "Call controls (flows.md §5, §11): tooltip; shortcut is like Ctrl+E.",
+    "placeholders": {
+      "shortcut": {
+        "type": "String"
+      }
+    }
+  },
+  "roomSwitchToEarpiece": "Switch to phone earpiece",
+  "@roomSwitchToEarpiece": {
+    "description": "Call controls (flows.md §5, §11): tooltip."
+  },
+  "roomSwitchToSpeaker": "Switch to speaker",
+  "@roomSwitchToSpeaker": {
+    "description": "Call controls (flows.md §5, §11): tooltip."
+  },
+  "roomSoundBlocked": "Your browser paused the sound.",
+  "@roomSoundBlocked": {
+    "description": "Call controls (flows.md §5, §11): web autoplay banner."
+  },
+  "roomTurnOnSound": "Turn on sound",
+  "@roomTurnOnSound": {
+    "description": "Call controls (flows.md §5, §11): web autoplay banner action."
+  },
+  "roomMicUnavailable": "Microphone isn't available. Others can't hear you.",
+  "@roomMicUnavailable": {
+    "description": "Call controls (flows.md §5, §11): banner."
+  },
+  "roomMicUnavailableWeb": "Microphone isn't available. Others can't hear you. Check access in the browser's address bar.",
+  "@roomMicUnavailableWeb": {
+    "description": "Call controls (flows.md §5, §11): banner on the web."
+  },
+  "roomAlone": "You're the only one here",
+  "@roomAlone": {
+    "description": "Call (flows.md §5): empty call title."
+  },
+  "roomAloneBody": "Share the link to invite someone.",
+  "@roomAloneBody": {
+    "description": "Call (flows.md §5): empty call body."
+  },
+  "roomYou": "You",
+  "@roomYou": {
+    "description": "Call (flows.md §5): the local participant."
+  },
+  "roomHost": "Host",
+  "@roomHost": {
+    "description": "Call (flows.md §5): host badge."
+  },
+  "roomSpeaking": "speaking",
+  "@roomSpeaking": {
+    "description": "Call (flows.md §5): screen reader state of a tile."
+  },
+  "roomMicOn": "microphone on",
+  "@roomMicOn": {
+    "description": "Call (flows.md §5): screen reader state of a tile."
+  },
+  "roomMicOff": "microphone off",
+  "@roomMicOff": {
+    "description": "Call (flows.md §5): screen reader state of a tile."
+  },
+  "roomWeakConnection": "weak connection",
+  "@roomWeakConnection": {
+    "description": "Call (flows.md §5): screen reader state of a tile."
+  },
+  "roomWeakConnectionTitle": "Weak connection",
+  "@roomWeakConnectionTitle": {
+    "description": "Call (flows.md §5): badge."
+  },
+  "roomCamOff": "camera off",
+  "@roomCamOff": {
+    "description": "Call (flows.md §5): screen reader state of a tile."
+  },
+  "roomSwap": "Swap",
+  "@roomSwap": {
+    "description": "Call (flows.md §5): picture-in-picture action."
+  },
+  "roomNameYou": "{name} (You)",
+  "@roomNameYou": {
+    "description": "Call (flows.md §5): local participant name.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomNameYouHost": "{name} (You, host)",
+  "@roomNameYouHost": {
+    "description": "Call (flows.md §5): local participant name when host.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomJoined": "{name} joined",
+  "@roomJoined": {
+    "description": "Call (flows.md §5): notice.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomLeft": "{name} left",
+  "@roomLeft": {
+    "description": "Call (flows.md §5): notice.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomJoinedMany": "{count, plural, =1{1 person joined} other{{count} people joined}}",
+  "@roomJoinedMany": {
+    "description": "Call (flows.md §5): grouped join notice.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomSomeone": "Someone",
+  "@roomSomeone": {
+    "description": "Call (flows.md §5): name of a participant without a name."
+  },
+  "roomParticipantCount": "{count, plural, =1{1 participant} other{{count} participants}}",
+  "@roomParticipantCount": {
+    "description": "Call (flows.md §5): participant count.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomExpiresSoon": "The invite link stops working at {time}. Anyone who drops out after that can't rejoin.",
+  "@roomExpiresSoon": {
+    "description": "Call (flows.md §5): banner; time is a clock time.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "roomDismiss": "Dismiss",
+  "@roomDismiss": {
+    "description": "Call (flows.md §5): banner action."
+  },
+  "roomPeopleTitle": "Participants ({count})",
+  "@roomPeopleTitle": {
+    "description": "Participants and host actions (flows.md §6): panel title.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "roomLock": "Lock room",
+  "@roomLock": {
+    "description": "Participants and host actions (flows.md §6): switch."
+  },
+  "roomLockSub": "No one new can join",
+  "@roomLockSub": {
+    "description": "Participants and host actions (flows.md §6): switch subtitle."
+  },
+  "roomLocked": "Room locked",
+  "@roomLocked": {
+    "description": "Participants and host actions (flows.md §6): snackbar."
+  },
+  "roomUnlocked": "Room unlocked",
+  "@roomUnlocked": {
+    "description": "Participants and host actions (flows.md §6): snackbar."
+  },
+  "roomPasswordSet": "Password changed",
+  "@roomPasswordSet": {
+    "description": "Participants and host actions (flows.md §6): snackbar."
+  },
+  "roomPasswordRemoved": "Password removed",
+  "@roomPasswordRemoved": {
+    "description": "Participants and host actions (flows.md §6): snackbar."
+  },
+  "roomInviteRotated": "New invite link ready. The old one stopped working.",
+  "@roomInviteRotated": {
+    "description": "Participants and host actions (flows.md §6): snackbar."
+  },
+  "roomChangePassword": "Change password",
+  "@roomChangePassword": {
+    "description": "Participants and host actions (flows.md §6): action."
+  },
+  "roomSetPassword": "Set a password",
+  "@roomSetPassword": {
+    "description": "Participants and host actions (flows.md §6): action."
+  },
+  "roomRemovePassword": "Remove password",
+  "@roomRemovePassword": {
+    "description": "Participants and host actions (flows.md §6): action."
+  },
+  "roomPasswordDialogTitle": "Room password",
+  "@roomPasswordDialogTitle": {
+    "description": "Participants and host actions (flows.md §6): dialog title."
+  },
+  "roomPasswordDialogBody": "People already in the call stay. New people need the new password.",
+  "@roomPasswordDialogBody": {
+    "description": "Participants and host actions (flows.md §6): dialog body."
+  },
+  "roomPasswordTooShort": "Use at least 4 characters",
+  "@roomPasswordTooShort": {
+    "description": "Participants and host actions (flows.md §6): validation error."
+  },
+  "roomPasswordTooLong": "Too long: up to 64 Latin characters (36 in Cyrillic)",
+  "@roomPasswordTooLong": {
+    "description": "Participants and host actions (flows.md §6): validation error."
+  },
+  "roomSave": "Save",
+  "@roomSave": {
+    "description": "Participants and host actions (flows.md §6): dialog button."
+  },
+  "roomRemovePasswordTitle": "Remove the password?",
+  "@roomRemovePasswordTitle": {
+    "description": "Participants and host actions (flows.md §6): dialog title."
+  },
+  "roomRemovePasswordBody": "Anyone with the link can join without a password.",
+  "@roomRemovePasswordBody": {
+    "description": "Participants and host actions (flows.md §6): dialog body."
+  },
+  "roomRemovePasswordConfirm": "Remove",
+  "@roomRemovePasswordConfirm": {
+    "description": "Participants and host actions (flows.md §6): dialog button."
+  },
+  "roomOptionsFor": "Options for {name}",
+  "@roomOptionsFor": {
+    "description": "Participants and host actions (flows.md §6): menu label for a participant.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomMute": "Mute",
+  "@roomMute": {
+    "description": "Participants and host actions (flows.md §6): host action on a participant."
+  },
+  "roomMuted": "{name} was muted",
+  "@roomMuted": {
+    "description": "Participants and host actions (flows.md §6): snackbar.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomRemoved": "{name} was removed",
+  "@roomRemoved": {
+    "description": "Participants and host actions (flows.md §6): snackbar.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomRemove": "Remove from call",
+  "@roomRemove": {
+    "description": "Participants and host actions (flows.md §6): host action."
+  },
+  "roomRemoveTitle": "Remove {name}?",
+  "@roomRemoveTitle": {
+    "description": "Participants and host actions (flows.md §6): dialog title.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "roomRemoveBody": "They will be disconnected from the call.",
+  "@roomRemoveBody": {
+    "description": "Participants and host actions (flows.md §6): dialog body."
+  },
+  "roomBan": "Don't let them rejoin",
+  "@roomBan": {
+    "description": "Participants and host actions (flows.md §6): checkbox."
+  },
+  "roomBanNote": "This only blocks rejoining from the same device and browser. To keep someone out for good, change the invite code too.",
+  "@roomBanNote": {
+    "description": "Participants and host actions (flows.md §6): checkbox note."
+  },
+  "roomRemoveConfirm": "Remove",
+  "@roomRemoveConfirm": {
+    "description": "Participants and host actions (flows.md §6): dialog button."
+  },
+  "roomCancel": "Cancel",
+  "@roomCancel": {
+    "description": "Participants and host actions (flows.md §6): dialog button."
+  },
+  "roomRoomSettings": "Room settings",
+  "@roomRoomSettings": {
+    "description": "Participants and host actions (flows.md §6): section title."
+  },
+  "roomLeaveSheetTitle": "Leave the call?",
+  "@roomLeaveSheetTitle": {
+    "description": "Leaving (flows.md §7): sheet title."
+  },
+  "roomLeaveLeave": "Leave call",
+  "@roomLeaveLeave": {
+    "description": "Leaving (flows.md §7): option."
+  },
+  "roomLeaveLeaveSub": "The call continues without you",
+  "@roomLeaveLeaveSub": {
+    "description": "Leaving (flows.md §7): option subtitle."
+  },
+  "roomLeaveEnd": "End call for everyone",
+  "@roomLeaveEnd": {
+    "description": "Leaving (flows.md §7): option."
+  },
+  "roomLeaveEndSub": "Everyone is disconnected and the room closes",
+  "@roomLeaveEndSub": {
+    "description": "Leaving (flows.md §7): option subtitle."
+  },
+  "roomLeaveConfirmTitle": "End the call for everyone?",
+  "@roomLeaveConfirmTitle": {
+    "description": "Leaving (flows.md §7): dialog title."
+  },
+  "roomLeaveConfirmBody": "Everyone will be disconnected and the invite link will stop working. This can't be undone.",
+  "@roomLeaveConfirmBody": {
+    "description": "Leaving (flows.md §7): dialog body."
+  },
+  "roomLeaveConfirm": "End for everyone",
+  "@roomLeaveConfirm": {
+    "description": "Leaving (flows.md §7): dialog button."
+  },
+  "roomReconnecting": "Connection lost. Reconnecting…",
+  "@roomReconnecting": {
+    "description": "Reconnecting (flows.md §8): banner."
+  },
+  "roomReconnected": "Reconnected",
+  "@roomReconnected": {
+    "description": "Reconnecting (flows.md §8): banner."
+  },
+  "roomEndedLeft": "You left the call",
+  "@roomEndedLeft": {
+    "description": "Ended screen (flows.md §9): title."
+  },
+  "roomEndedByHost": "The call has ended",
+  "@roomEndedByHost": {
+    "description": "Ended screen (flows.md §9): title."
+  },
+  "roomEndedByHostBody": "The host ended the call for everyone.",
+  "@roomEndedByHostBody": {
+    "description": "Ended screen (flows.md §9): body."
+  },
+  "roomEndedByYou": "You ended the call for everyone",
+  "@roomEndedByYou": {
+    "description": "Ended screen (flows.md §9): title."
+  },
+  "roomEndedRemoved": "You were removed from the call",
+  "@roomEndedRemoved": {
+    "description": "Ended screen (flows.md §9): title."
+  },
+  "roomEndedExpired": "The invite link has expired",
+  "@roomEndedExpired": {
+    "description": "Ended screen (flows.md §9): title."
+  },
+  "roomEndedExpiredBody": "You can't rejoin after the link expires. Ask the host for a new room.",
+  "@roomEndedExpiredBody": {
+    "description": "Ended screen (flows.md §9): body."
+  },
+  "roomEndedElsewhere": "You joined from another device",
+  "@roomEndedElsewhere": {
+    "description": "Ended screen (flows.md §9): title."
+  },
+  "roomEndedElsewhereBody": "This call continues on your other device or browser tab.",
+  "@roomEndedElsewhereBody": {
+    "description": "Ended screen (flows.md §9): body."
+  },
+  "roomEndedConnectionLost": "Connection lost",
+  "@roomEndedConnectionLost": {
+    "description": "Ended screen (flows.md §9): title."
+  },
+  "roomEndedConnectionLostBody": "Check your internet connection and try again.",
+  "@roomEndedConnectionLostBody": {
+    "description": "Ended screen (flows.md §9): body."
+  },
+  "roomRejoin": "Rejoin",
+  "@roomRejoin": {
+    "description": "Ended screen (flows.md §9): button."
+  },
+  "roomUseHere": "Join here instead",
+  "@roomUseHere": {
+    "description": "Ended screen (flows.md §9): button."
+  },
+  "roomHome": "Back to home",
+  "@roomHome": {
+    "description": "Ended screen (flows.md §9): button."
+  },
+  "roomNewRoom": "New room",
+  "@roomNewRoom": {
+    "description": "Ended screen (flows.md §9): button."
+  },
+  "roomNotFoundTitle": "Room not found",
+  "@roomNotFoundTitle": {
+    "description": "Full-screen errors (flows.md §10): title."
+  },
+  "roomNotFoundBody": "It may have ended, expired, or the invite code was changed. Ask for a new link.",
+  "@roomNotFoundBody": {
+    "description": "Full-screen errors (flows.md §10): body."
+  },
+  "roomFullTitle": "The room is full",
+  "@roomFullTitle": {
+    "description": "Full-screen errors (flows.md §10): title."
+  },
+  "roomFullBody": "{max, plural, =1{This room allows 1 person. Try again later or ask the host.} other{This room allows {max} people. Try again later or ask the host.}}",
+  "@roomFullBody": {
+    "description": "Full-screen errors (flows.md §10): body with the room limit.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "roomFullBodyUnknown": "Try again later or ask the host.",
+  "@roomFullBodyUnknown": {
+    "description": "Full-screen errors (flows.md §10): body without the limit."
+  },
+  "roomLockedTitle": "The room is locked",
+  "@roomLockedTitle": {
+    "description": "Full-screen errors (flows.md §10): title."
+  },
+  "roomLockedBody": "The host isn't letting new people in right now.",
+  "@roomLockedBody": {
+    "description": "Full-screen errors (flows.md §10): body."
+  },
+  "roomBannedTitle": "You can't join this room",
+  "@roomBannedTitle": {
+    "description": "Full-screen errors (flows.md §10): title."
+  },
+  "roomBannedBody": "The host removed you and blocked rejoining.",
+  "@roomBannedBody": {
+    "description": "Full-screen errors (flows.md §10): body."
+  },
+  "roomTryAgain": "Try again",
+  "@roomTryAgain": {
+    "description": "Full-screen errors (flows.md §10): button."
+  },
+  "roomNoConnectionTitle": "No connection",
+  "@roomNoConnectionTitle": {
+    "description": "Full-screen errors (flows.md §10): title."
+  },
+  "roomSomethingWrongTitle": "Something went wrong",
+  "@roomSomethingWrongTitle": {
+    "description": "Full-screen errors (flows.md §10): title."
+  },
+  "roomShortcutsTitle": "Keyboard shortcuts",
+  "@roomShortcutsTitle": {
+    "description": "Keyboard shortcuts (flows.md §11): dialog title."
+  },
+  "roomShortcutMic": "Turn microphone on or off",
+  "@roomShortcutMic": {
+    "description": "Keyboard shortcuts (flows.md §11): row."
+  },
+  "roomShortcutCamera": "Turn camera on or off",
+  "@roomShortcutCamera": {
+    "description": "Keyboard shortcuts (flows.md §11): row."
+  },
+  "roomShortcutPeople": "Show or hide participants",
+  "@roomShortcutPeople": {
+    "description": "Keyboard shortcuts (flows.md §11): row."
+  },
+  "roomShortcutHelp": "Show shortcuts",
+  "@roomShortcutHelp": {
+    "description": "Keyboard shortcuts (flows.md §11): row."
+  },
+  "roomClose": "Close",
+  "@roomClose": {
+    "description": "Keyboard shortcuts (flows.md §11): dialog button."
+  },
+  "inviteReady": "Your room is ready",
+  "@inviteReady": {
+    "description": "Invite card and sheet (flows.md §3): title after creating a room."
+  },
+  "inviteTitle": "Invite people",
+  "@inviteTitle": {
+    "description": "Invite card and sheet (flows.md §3): sheet title."
+  },
+  "inviteCodeLabel": "Room code",
+  "@inviteCodeLabel": {
+    "description": "Invite card and sheet (flows.md §3): label."
+  },
+  "inviteLinkLabel": "Invite link",
+  "@inviteLinkLabel": {
+    "description": "Invite card and sheet (flows.md §3): label."
+  },
+  "inviteCopyLink": "Copy link",
+  "@inviteCopyLink": {
+    "description": "Invite card and sheet (flows.md §3): button."
+  },
+  "inviteCopyCode": "Copy code",
+  "@inviteCopyCode": {
+    "description": "Invite card and sheet (flows.md §3): button."
+  },
+  "inviteShare": "Share…",
+  "@inviteShare": {
+    "description": "Invite card and sheet (flows.md §3): button that opens the system share sheet."
+  },
+  "inviteShareText": "Join my call: {link}",
+  "@inviteShareText": {
+    "description": "Invite card and sheet (flows.md §3): text sent via the share sheet.",
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "inviteShareSubject": "Join my call",
+  "@inviteShareSubject": {
+    "description": "Invite card and sheet (flows.md §3): subject sent via the share sheet."
+  },
+  "inviteLinkCopied": "Link copied",
+  "@inviteLinkCopied": {
+    "description": "Invite card and sheet (flows.md §3): snackbar."
+  },
+  "inviteCodeCopied": "Code copied",
+  "@inviteCodeCopied": {
+    "description": "Invite card and sheet (flows.md §3): snackbar."
+  },
+  "invitePasswordNote": "This room has a password. Send it separately.",
+  "@invitePasswordNote": {
+    "description": "Invite card and sheet (flows.md §3): note."
+  },
+  "inviteDone": "Done",
+  "@inviteDone": {
+    "description": "Invite card and sheet (flows.md §3): button."
+  },
+  "inviteRotate": "Change invite code",
+  "@inviteRotate": {
+    "description": "Invite card and sheet (flows.md §3): host action."
+  },
+  "inviteRotateTitle": "Change the invite code?",
+  "@inviteRotateTitle": {
+    "description": "Invite card and sheet (flows.md §3): dialog title."
+  },
+  "inviteRotateBody": "The old link and code stop working. People already in the call stay.",
+  "@inviteRotateBody": {
+    "description": "Invite card and sheet (flows.md §3): dialog body."
+  },
+  "inviteRotateConfirm": "Change code",
+  "@inviteRotateConfirm": {
+    "description": "Invite card and sheet (flows.md §3): dialog button."
+  },
+  "inviteCancel": "Cancel",
+  "@inviteCancel": {
+    "description": "Invite card and sheet (flows.md §3): dialog button."
+  },
+  "failureRoomNotFound": "Room not found. It may have ended, expired, or the invite code was changed.",
+  "@failureRoomNotFound": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failurePasswordRequired": "This room needs a password.",
+  "@failurePasswordRequired": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureInvalidPassword": "Wrong password. Check it and try again.",
+  "@failureInvalidPassword": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureRoomFull": "The room is full. Try again later or ask the host.",
+  "@failureRoomFull": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureRoomLocked": "The host isn't letting new people in right now.",
+  "@failureRoomLocked": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureTooManyAttempts": "Too many attempts. Try again later.",
+  "@failureTooManyAttempts": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureInvalidCode": "That doesn't look like a room code. Codes have 10 letters, like abc-defg-hjk.",
+  "@failureInvalidCode": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureForbidden": "Only the host can do this.",
+  "@failureForbidden": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureParticipantBanned": "The host doesn't allow you in this room.",
+  "@failureParticipantBanned": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureParticipantNotFound": "This participant has already left.",
+  "@failureParticipantNotFound": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureInvalidRoomName": "Use a room name of at most 40 characters.",
+  "@failureInvalidRoomName": {
+    "description": "Error message for a failed request (flows.md §10): invalid room name."
+  },
+  "failureInvalidPasswordInput": "Use a password of 4 to 64 characters.",
+  "@failureInvalidPasswordInput": {
+    "description": "Error message for a failed request (flows.md §10): invalid password length."
+  },
+  "failureInvalidMaxParticipants": "A room can have 2 to 10 participants.",
+  "@failureInvalidMaxParticipants": {
+    "description": "Error message for a failed request (flows.md §10): invalid participant limit."
+  },
+  "failureInvalidLifetime": "Choose a duration between 15 minutes and 24 hours.",
+  "@failureInvalidLifetime": {
+    "description": "Error message for a failed request (flows.md §10): invalid invite lifetime."
+  },
+  "failureInvalidDisplayName": "Use a name of 1 to 32 characters.",
+  "@failureInvalidDisplayName": {
+    "description": "Error message for a failed request (flows.md §10): invalid display name."
+  },
+  "failureMediaDevice": "Camera or microphone is not available.",
+  "@failureMediaDevice": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureNetwork": "No connection. Check your internet connection and try again.",
+  "@failureNetwork": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureServer": "Something went wrong. Please try again in a moment.",
+  "@failureServer": {
+    "description": "Error message for a failed request (flows.md §10)."
+  },
+  "failureServerBusy": "The server is busy right now. Try again in a moment.",
+  "@failureServerBusy": {
+    "description": "Error message for a failed request (flows.md §10): 503 server_busy, the server is at capacity; nothing counted against the user."
+  },
+  "failureMediaRefused": "Couldn't connect to the call. Check your connection and try again.",
+  "@failureMediaRefused": {
+    "description": "Error message for a failed request (flows.md §10): media server refused the connection."
+  },
+  "failureUnknown": "Something went wrong. Please try again in a moment.",
+  "@failureUnknown": {
+    "description": "Error message for a failed request (flows.md §10): unknown error."
+  }
+}

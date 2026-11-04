@@ -1,778 +1,130 @@
-import 'dart:async';
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:livekit_client/livekit_client.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
-import '../../../../core/di/injection.dart';
-import '../../../theme/app_colors.dart';
-import '../../../widgets/liquid_bounce_button.dart';
-import '../../../widgets/liquid_glass_container.dart';
-import '../widgets/draggable_pip_view.dart';
-import '../widgets/dynamic_island_badge.dart';
-import '../widgets/mission_control_grid.dart';
-import '../widgets/participant_tile.dart';
+
+import '../../../../core/router/app_routes.dart';
+import '../../../../domain/entities/room.dart';
+import '../../../../domain/entities/room_code.dart';
+import '../bloc/lobby_cubit.dart';
 import '../bloc/room_bloc.dart';
-import '../bloc/room_event.dart';
-import '../bloc/room_state.dart';
+import 'call_view.dart';
+import 'ended_view.dart';
+import 'join_error_view.dart';
+import 'lobby_view.dart';
 
+/// Lets the room route ask before history navigation (browser Back, a new
+/// URL) leaves a call (UX3-03). The call view attaches while it is shown; in
+/// every other state the route may leave at once.
+final class RoomExitGuard {
+  Future<bool> Function()? _onExit;
+
+  void attach(Future<bool> Function() onExit) => _onExit = onExit;
+
+  void detach(Future<bool> Function() onExit) {
+    if (_onExit == onExit) _onExit = null;
+  }
+
+  /// True when the route may leave now.
+  Future<bool> mayExit() => _onExit?.call() ?? Future.value(true);
+}
+
+/// `/r/:code`: lobby → call → ended, one attempt at a time.
+///
+/// Each attempt gets a fresh [RoomBloc] and [LobbyCubit] from the factories
+/// (the composition root passes them in), so "Rejoin" and "Try again" always
+/// make a new join request, and closing the screen releases camera,
+/// microphone and the media connection.
 class RoomScreen extends StatefulWidget {
-  final String roomName;
-  final String? pin;
+  const RoomScreen({
+    super.key,
+    required this.code,
+    required this.createRoomBloc,
+    required this.createLobbyCubit,
+    this.summary,
+    this.exitGuard,
+  });
 
-  const RoomScreen({super.key, required this.roomName, this.pin});
+  final RoomCode code;
+
+  /// Lookup result from Home; used for the first attempt only.
+  final RoomSummary? summary;
+  final RoomBloc Function() createRoomBloc;
+  final LobbyCubit Function() createLobbyCubit;
+  final RoomExitGuard? exitGuard;
 
   @override
   State<RoomScreen> createState() => _RoomScreenState();
 }
 
-class _RoomScreenState extends State<RoomScreen> with WidgetsBindingObserver {
-  Timer? _hideTimer;
-  Participant? _pinnedParticipant;
-  bool _showControls = true;
+class _RoomScreenState extends State<RoomScreen> {
+  int _attempt = 0;
+  late RoomCode _code = widget.code;
+  DeviceChoice _devices = (camera: true, microphone: true);
 
-  @override
-  void initState() {
-    super.initState();
-    WakelockPlus.enable(); // Keep screen on during call
-    WidgetsBinding.instance.addObserver(this);
-    _startHideTimer();
-  }
+  void _newAttempt({RoomCode? code}) => setState(() {
+    _attempt++;
+    if (code != null) _code = code;
+  });
 
-  @override
-  void dispose() {
-    WakelockPlus.disable(); // Allow screen to turn off after call
-    WidgetsBinding.instance.removeObserver(this);
-    _hideTimer?.cancel();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    super.dispose();
-  }
+  void _goHome() => context.go(AppRoutes.home);
 
-  /// Mute camera automatically on background state for privacy.
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!mounted) return;
-    try {
-      final bloc = context.read<RoomBloc>();
-      if (bloc.isClosed) return;
-
-      if (state == AppLifecycleState.paused ||
-          state == AppLifecycleState.hidden) {
-        bloc.add(ToggleCamera(false));
-      } else if (state == AppLifecycleState.resumed) {
-        bloc.add(ToggleCamera(true));
-      }
-    } catch (_) {
-      // BlocProvider not available (e.g. during route transition)
-    }
-  }
-
-  void _toggleControls() {
-    setState(() {
-      _showControls = !_showControls;
-    });
-    if (_showControls) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      _startHideTimer();
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      _hideTimer?.cancel();
-    }
-  }
-
-  void _startHideTimer() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted) {
-        setState(() {
-          _showControls = false;
-        });
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      }
-    });
-  }
-
-  void _handleInteraction() {
-    if (!_showControls) {
-      setState(() {
-        _showControls = true;
-      });
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    }
-    _startHideTimer();
-  }
+  void _newRoom() => context.go(
+    AppRoutes.home,
+    extra: const HomeRouteExtra(openCreateSheet: true),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) {
-        final bloc = getIt<RoomBloc>();
-        // Delay WebRTC bindings by 350ms for route transition to complete
-        Future.delayed(const Duration(milliseconds: 350), () {
-          if (!bloc.isClosed) {
-            bloc.add(
-              ConnectToRoom(
-                roomName: widget.roomName,
-                participantName:
-                    'User_${DateTime.now().millisecondsSinceEpoch}',
-                pin: widget.pin,
-              ),
-            );
-          }
-        });
-        return bloc;
-      },
-      child: BlocBuilder<RoomBloc, RoomState>(
-        builder: (context, state) {
-          return Scaffold(
-            backgroundColor: Colors.black,
-            body: MouseRegion(
-              onHover: (_) => _handleInteraction(),
-              child: Stack(
-                children: [
-                  if (state.status == RoomStatus.connecting)
-                    Container(
-                      color: Colors.black,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    )
-                  else
-                    _buildVideoLayout(context, state),
-                  if (state.status == RoomStatus.error)
-                    Center(
-                      child: Text(
-                        state.errorMessage ?? 'Error connecting',
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                    ),
-                  DynamicIslandBadge(
-                    roomName: widget.roomName,
-                    isVisible: _showControls,
-                  ),
-                  AnimatedPositioned(
-                    bottom: _showControls
-                        ? 120
-                        : 40, // Dynamic distance from bottom
-                    left: 0,
-                    right: 0,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                    child: _FoldingNotificationHUD(state: state),
-                  ),
-                  Positioned(
-                    bottom: 30,
-                    left: 0,
-                    right: 0,
-                    child: AnimatedSlide(
-                      offset: _showControls
-                          ? Offset.zero
-                          : const Offset(0, 1.5),
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedOpacity(
-                        opacity: _showControls ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 300),
-                        child: IgnorePointer(
-                          ignoring: !_showControls,
-                          child: _buildMediaControls(context, state),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    final summary = _attempt == 0 ? widget.summary : null;
+    return MultiBlocProvider(
+      key: ValueKey(_attempt),
+      providers: [
+        BlocProvider(create: (_) => widget.createRoomBloc()),
+        BlocProvider(
+          create: (_) => widget.createLobbyCubit()
+            ..start(
+              _code,
+              summary: summary,
+              camera: _devices.camera,
+              microphone: _devices.microphone,
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildVideoLayout(BuildContext context, RoomState state) {
-    if (state.participants.isEmpty) return const SizedBox.shrink();
-
-    // 1 Participant (Only Local)
-    if (state.participants.length == 1) {
-      return Stack(
-        children: [
-          ParticipantTile(
-            key: ValueKey(state.participants.first.sid),
-            participant: state.participants.first,
-            isActive: false, // No active speaker highlight in 1-on-1 calls
-            isFullScreen: true,
-            onLongPress: () => _handleParticipantLongPress(context, state, state.participants.first),
-            child: _buildFullscreenVideo(
-              state.participants.first,
-              fit: VideoViewFit.cover,
-              showMicIcon: false,
-            ),
-          ),
-          _buildTapOverlay(),
-        ],
-      );
-    }
-
-    // 2 Participants (1-on-1 Call)
-    if (state.participants.length == 2) {
-      final local = state.room?.localParticipant;
-      final remote = state.participants.firstWhereOrNull((p) => p != local);
-
-      Participant fullscreenParticipant = remote ?? state.participants.first;
-      Participant pipParticipant = local ?? state.participants.last;
-
-      if (_pinnedParticipant != null &&
-          state.participants.contains(_pinnedParticipant)) {
-        fullscreenParticipant = _pinnedParticipant!;
-        pipParticipant = state.participants.firstWhere(
-          (p) => p != _pinnedParticipant,
-        );
-      }
-
-      final isLocalFullscreen = fullscreenParticipant == local;
-      final fullscreenFit = isLocalFullscreen
-          ? VideoViewFit.cover
-          : VideoViewFit.contain;
-
-      return Stack(
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            transitionBuilder: _buildSwapTransition,
-            child: InteractiveViewer(
-              key: ValueKey(fullscreenParticipant.sid),
-              clipBehavior: Clip.none,
-              panEnabled: false,
-              minScale: 1.0,
-              maxScale: 4.0,
-              child: ParticipantTile(
-                participant: fullscreenParticipant,
-                isActive: false, // No active speaker highlight in 1-on-1 calls
-                isFullScreen: true,
-                onLongPress: () => _handleParticipantLongPress(context, state, fullscreenParticipant),
-                child: _buildFullscreenVideo(
-                  fullscreenParticipant,
-                  fit: fullscreenFit,
-                  showMicIcon: !isLocalFullscreen,
-                ),
-              ),
-            ),
-          ),
-          _buildTapOverlay(), // Placed UNDER PiP to allow PiP dragging
-          DraggablePipView(
-            onTap: () {
-              setState(() {
-                _pinnedParticipant = pipParticipant;
-              });
-            },
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              transitionBuilder: _buildSwapTransition,
-              child: ParticipantTile(
-                key: ValueKey(pipParticipant.sid),
-                participant: pipParticipant,
-                isActive: false, // No active speaker highlight in 1-on-1 calls
-                onLongPress: () => _handleParticipantLongPress(context, state, pipParticipant),
-                child: _buildVideoView(pipParticipant, fit: VideoViewFit.cover),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // 3+ Participants (Mission Control Grid)
-    return Stack(
-      children: [_buildMissionControlGrid(context, state), _buildTapOverlay()],
-    );
-  }
-
-  Widget _buildSwapTransition(Widget child, Animation<double> animation) {
-    final scaleAnimation = Tween<double>(
-      begin: 0.95,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
-    return FadeTransition(
-      opacity: animation,
-      child: ScaleTransition(scale: scaleAnimation, child: child),
-    );
-  }
-
-  Widget _buildTapOverlay() {
-    return Positioned.fill(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: _toggleControls,
-      ),
-    );
-  }
-
-  Widget _buildFullscreenVideo(
-    Participant participant, {
-    VideoViewFit fit = VideoViewFit.contain,
-    bool showMicIcon = true,
-  }) {
-    return SizedBox.expand(
-      child: _buildVideoView(participant, fit: fit, showMicIcon: showMicIcon),
-    );
-  }
-
-  Widget _buildVideoView(
-    Participant participant, {
-    Key? key,
-    VideoViewFit fit = VideoViewFit.contain,
-    bool showMicIcon = true,
-  }) {
-    final videoTrack =
-        participant.videoTrackPublications
-                .firstWhereOrNull((p) => p.track != null && !p.muted)
-                ?.track
-            as VideoTrack?;
-
-    final isMicMuted = !participant.isMicrophoneEnabled();
-
-    Widget content;
-    if (videoTrack != null) {
-      content = VideoTrackRenderer(
-        videoTrack,
-        fit: fit,
-        key: ValueKey('${participant.sid}_${videoTrack.sid}'),
-      );
-    } else {
-      content = Container(
-        color: AppColors.surface,
-        child: const Center(
-          child: Icon(Icons.videocam_off, size: 64, color: Colors.white24),
         ),
-      );
-    }
-
-    Widget videoContent = content;
-
-    if (participant is LocalParticipant) {
-      videoContent = BlocBuilder<RoomBloc, RoomState>(
-        buildWhen: (prev, curr) => prev.isFrontCamera != curr.isFrontCamera,
-        builder: (context, state) {
-          return _CameraFlipWidget(
-            isFrontCamera: state.isFrontCamera,
-            child: content,
-          );
-        },
-      );
-    }
-
-    return LayoutBuilder(
-      key: key,
-      builder: (context, constraints) {
-        final screenAR = constraints.maxWidth / constraints.maxHeight;
-
-        // Extract native video aspect ratio
-        double videoAR = 1.0;
-        bool hasVideo =
-            videoTrack != null && participant.videoTrackPublications.isNotEmpty;
-        if (hasVideo) {
-          final pub = participant.videoTrackPublications.firstWhereOrNull(
-            (p) => p.track == videoTrack,
-          );
-          if (pub != null && pub.dimensions != null) {
-            final w = pub.dimensions!.width;
-            final h = pub.dimensions!.height;
-            if (h > 0 && w > 0) videoAR = w / h;
-          }
-        }
-
-        // Calculate letterboxing based on fit
-        double renderedWidth = constraints.maxWidth;
-        double renderedHeight = constraints.maxHeight;
-
-        if (fit == VideoViewFit.contain && hasVideo) {
-          if (screenAR > videoAR) {
-            // Screen is wider than video (pillarboxing on sides)
-            renderedWidth = constraints.maxHeight * videoAR;
-          } else {
-            // Screen is taller than video (letterboxing on top/bottom)
-            renderedHeight = constraints.maxWidth / videoAR;
-          }
-        }
-
-        final horizontalPadding = (constraints.maxWidth - renderedWidth) / 2;
-        final verticalPadding = (constraints.maxHeight - renderedHeight) / 2;
-
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            videoContent,
-            if (isMicMuted && showMicIcon)
-              Positioned(
-                bottom: verticalPadding + 12,
-                right: horizontalPadding + 12,
-                child: LiquidGlassContainer(
-                  blur: 8,
-                  borderRadius: 100,
-                  backgroundColor: Colors.black.withValues(alpha: 0.4),
-                  borderColor: Colors.white.withValues(alpha: 0.1),
-                  padding: const EdgeInsets.all(6),
-                  child: const Icon(
-                    Icons.mic_off,
-                    size: 20,
-                    color: AppColors.error,
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildMissionControlGrid(BuildContext context, RoomState state) {
-    // SafeArea prevents notch clipping, applied only to grids > 2 people.
-    return SafeArea(
-      child: MissionControlGrid(
-        participants: state.participants,
-        activeSpeakers: state.activeSpeakers,
-        buildVideoView: (participant, {fit = VideoViewFit.cover}) => ParticipantTile(
-          participant: participant,
-          onLongPress: () => _handleParticipantLongPress(context, state, participant),
-          child: _buildVideoView(participant, fit: fit),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMediaControls(BuildContext context, RoomState state) {
-    final isAdmin = state.isOwner;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildMediaButton(
-          state.isMicEnabled ? Icons.mic : Icons.mic_off,
-          () => context.read<RoomBloc>().add(
-            ToggleMicrophone(!state.isMicEnabled),
-          ),
-          color: state.isMicEnabled ? AppColors.surface : AppColors.error,
-        ),
-        const SizedBox(width: 20),
-        _buildMediaButton(
-          state.isCameraEnabled ? Icons.videocam : Icons.videocam_off,
-          () => context.read<RoomBloc>().add(
-            ToggleCamera(!state.isCameraEnabled),
-          ),
-          color: state.isCameraEnabled ? AppColors.surface : AppColors.error,
-        ),
-        const SizedBox(width: 20),
-        _buildMediaButton(
-          Icons.cameraswitch,
-          () => context.read<RoomBloc>().add(SwitchCamera()),
-        ),
-        const SizedBox(width: 20),
-        if (isAdmin) ...[
-          _buildMediaButton(Icons.dangerous, () {
-            // End room for everyone
-            final bloc = context.read<RoomBloc>();
-            bloc.add(AdminEndRoom(
-              roomName: widget.roomName,
-              participantName: state.room!.localParticipant!.identity,
-            ));
-            bloc.add(ToggleMicrophone(false));
-            bloc.add(ToggleCamera(false));
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/');
-            }
-          }, color: AppColors.error),
-          const SizedBox(width: 20),
-        ],
-        _buildMediaButton(Icons.call_end, () {
-          final bloc = context.read<RoomBloc>();
-          bloc.add(ToggleMicrophone(false));
-          bloc.add(ToggleCamera(false));
-
-          // BLoC asynchronous teardown handling
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/');
-          }
-        }, color: AppColors.error),
       ],
-    );
-  }
-
-  Widget _buildMediaButton(
-    IconData icon,
-    VoidCallback onPressed, {
-    Color? color,
-  }) {
-    final bgColor =
-        color?.withValues(alpha: 0.4) ??
-        AppColors.surface.withValues(alpha: 0.4);
-
-    return LiquidBounceButton(
-      onPressed: () {
-        _startHideTimer();
-        onPressed();
-      },
-      icon: icon,
-      bgColor: bgColor,
-    );
-  }
-  void _handleParticipantLongPress(BuildContext context, RoomState state, Participant target) {
-    final localParticipant = state.room?.localParticipant;
-    final isAdmin = state.isOwner;
-
-    if (!isAdmin || target == localParticipant || target is! RemoteParticipant) {
-      return;
-    }
-
-    final targetAudioTrack = target.audioTrackPublications.firstWhereOrNull((p) => p.track != null && !p.muted);
-    if (targetAudioTrack == null) {
-      return; // Already muted or no audio track
-    }
-
-    showDialog(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          backgroundColor: AppColors.surface,
-          title: const Text('Admin Action', style: TextStyle(color: Colors.white)),
-          content: Text('Mute ${target.identity}?', style: const TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(
-              onPressed: () => context.pop(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-            ),
-            TextButton(
-              onPressed: () {
-                context.read<RoomBloc>().add(AdminMuteParticipant(
-                  roomName: widget.roomName,
-                  participantName: localParticipant!.identity,
-                  targetId: target.identity,
-                  trackIdentity: targetAudioTrack.sid,
-                ));
-                context.pop();
-              },
-              child: const Text('Mute', style: TextStyle(color: AppColors.error)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _CameraFlipWidget extends StatefulWidget {
-  final Widget child;
-  final bool isFrontCamera;
-
-  const _CameraFlipWidget({required this.child, required this.isFrontCamera});
-
-  @override
-  State<_CameraFlipWidget> createState() => _CameraFlipWidgetState();
-}
-
-class _CameraFlipWidgetState extends State<_CameraFlipWidget>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-  }
-
-  @override
-  void didUpdateWidget(_CameraFlipWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isFrontCamera != oldWidget.isFrontCamera) {
-      _controller.forward(from: 0.0);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final curveValue = Curves.easeInOut.transform(_controller.value);
-        final direction = widget.isFrontCamera ? 1.0 : -1.0;
-        double angle;
-
-        if (curveValue <= 0.5) {
-          // 0.0 to 90.0 degrees
-          angle = curveValue * 3.14159265 * direction;
-        } else {
-          // -90.0 to 0.0 degrees
-          angle = (curveValue - 1.0) * 3.14159265 * direction;
-        }
-
-        final transform = Matrix4.identity()
-          ..setEntry(3, 2, 0.0015) // Deep perspective
-          ..rotateY(angle);
-
-        return Transform(
-          alignment: Alignment.center,
-          transform: transform,
-          child: child,
-        );
-      },
-      child: widget.child,
-    );
-  }
-}
-
-class _FoldingNotificationHUD extends StatefulWidget {
-  final RoomState state;
-
-  const _FoldingNotificationHUD({Key? key, required this.state})
-    : super(key: key);
-
-  @override
-  State<_FoldingNotificationHUD> createState() =>
-      _FoldingNotificationHUDState();
-}
-
-class _FoldingNotificationHUDState extends State<_FoldingNotificationHUD>
-    with SingleTickerProviderStateMixin {
-  String _message = '';
-  bool _isVisible = false;
-  bool _isExpanded = false;
-  Timer? _collapseTimer;
-  Timer? _hideTimer;
-
-  @override
-  void didUpdateWidget(covariant _FoldingNotificationHUD oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    final newMessage = widget.state.notificationMessage;
-    final oldMessage = oldWidget.state.notificationMessage;
-
-    if (newMessage != null &&
-        newMessage.isNotEmpty &&
-        newMessage != oldMessage) {
-      _showNotification(newMessage);
-    }
-  }
-
-  void _showNotification(String msg) {
-    _collapseTimer?.cancel();
-    _hideTimer?.cancel();
-
-    setState(() {
-      _message = msg;
-      _isVisible = true;
-      _isExpanded = true;
-    });
-
-    // Fold into icon after 2.5 seconds
-    _collapseTimer = Timer(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        setState(() {
-          _isExpanded = false;
-        });
-      }
-    });
-
-    // Float completely down after 3.2 seconds
-    _hideTimer = Timer(const Duration(milliseconds: 3200), () {
-      if (mounted) {
-        setState(() {
-          _isVisible = false;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _collapseTimer?.cancel();
-    _hideTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: AnimatedSlide(
-        offset: _isVisible ? Offset.zero : const Offset(0, 1.0),
-        duration: const Duration(milliseconds: 500),
-        curve: _isVisible ? Curves.easeOutBack : Curves.easeIn,
-        child: AnimatedOpacity(
-          opacity: _isVisible ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 300),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              LiquidGlassContainer(
-                blur: 12,
-                borderRadius: 100,
-                backgroundColor: Colors.black.withValues(alpha: 0.5),
-                borderColor: Colors.white.withValues(alpha: 0.1),
-                padding: EdgeInsets.symmetric(
-                  horizontal: _isExpanded
-                      ? 24
-                      : 10, // 10 matches vertical padding for a perfect circle
-                  vertical: 10,
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      AnimatedOpacity(
-                        opacity: _isExpanded ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: AnimatedSize(
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.easeOutCubic,
-                          alignment: Alignment.centerLeft,
-                          child: _isExpanded
-                              ? Padding(
-                                  padding: const EdgeInsets.only(left: 8.0),
-                                  child: Text(
-                                    _message,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.5,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.clip,
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+      child: BlocBuilder<RoomBloc, RoomState>(
+        buildWhen: (previous, current) =>
+            previous.runtimeType != current.runtimeType ||
+            current is RoomFailed ||
+            current is RoomEnded,
+        builder: (context, state) => PopScope(
+          // System Back outside a call goes Home instead of closing the
+          // app; in a call, CallView runs the Leave flow (UX3-03).
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop && context.read<RoomBloc>().state is! RoomInCall) {
+              _goHome();
+            }
+          },
+          child: _body(state),
         ),
       ),
     );
   }
+
+  Widget _body(RoomState state) => switch (state) {
+    RoomInCall() => CallView(exitGuard: widget.exitGuard),
+    RoomEnded(:final reason, :final endedByYou, :final code) => EndedView(
+      reason: reason,
+      endedByYou: endedByYou,
+      onRejoin: () => _newAttempt(code: code),
+      onHome: _goHome,
+      onNewRoom: _newRoom,
+    ),
+    RoomFailed(:final failure) when isFullScreenJoinFailure(failure) =>
+      JoinErrorView(failure: failure, onHome: _goHome, onRetry: _newAttempt),
+    RoomInitial() || RoomConnecting() || RoomFailed() => LobbyView(
+      code: _code,
+      onHome: _goHome,
+      onJoining: (devices) => _devices = devices,
+    ),
+  };
 }

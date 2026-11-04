@@ -1,5 +1,5 @@
-name: familycalls
-description: "A new Flutter project."
+name: roomtime
+description: "RoomTime: video rooms you join by code."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -30,30 +30,30 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   flutter_bloc: ^9.1.1
   go_router: ^17.1.0
   livekit_client: ^2.6.3
   get_it: ^9.2.1
   injectable: ^2.7.1+4
-  envied: ^1.3.3
   equatable: ^2.0.8
   collection: ^1.19.1
   flutter_secure_storage: ^10.0.0
   permission_handler: ^12.0.1
-  rxdart: ^0.28.0
   dio: ^5.9.1
-  cryptography: ^2.9.0
   audioplayers: ^6.6.0
   wakelock_plus: ^1.4.0
-  liquid_glass_renderer: ^0.2.0-dev.4
-  device_info_plus: ^12.3.0
+  share_plus: ^12.0.2
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.3
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -64,7 +64,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.11.1
   injectable_generator: ^2.12.0
-  envied_generator: ^1.3.3
   bloc_test: ^10.0.0
   flutter_launcher_icons: ^0.14.4
 
@@ -73,6 +72,7 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -83,6 +83,15 @@ flutter:
   assets:
     - assets/brand/
     - assets/sounds/
+
+  # Inter 4.1 (SIL OFL 1.1, assets/fonts/inter/OFL.txt) is bundled so that no
+  # platform, including web, fetches fonts from a third-party CDN.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/inter/InterVariable.ttf
+        - asset: assets/fonts/inter/InterVariable-Italic.ttf
+          style: italic
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -111,16 +120,18 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 flutter_launcher_icons:
+  image_path: "assets/brand/icon/app-icon-1024.png"
   android: "launcher_icon"
+  min_sdk_android: 21
+  adaptive_icon_background: "assets/brand/icon/android/adaptive-background-432.png"
+  adaptive_icon_foreground: "assets/brand/icon/android/adaptive-foreground-432.png"
+  adaptive_icon_monochrome: "assets/brand/icon/android/adaptive-monochrome-432.png"
   ios: true
-  image_path: "assets/brand/logo.png"
-  min_sdk_android: 21 # android min sdk min:16, default 21
+  remove_alpha_ios: true
   web:
-    generate: true
-    image_path: "assets/brand/logo.png"
-    background_color: "#00AEFF"
-    theme_color: "#00AEFF"
-  windows:
-    generate: false
+    generate: false # maskable icons are copied by hand (docs/design/identity.md section 7)
   macos:
     generate: true
+    image_path: "assets/brand/icon/macos/macos-icon-1024.png"
+  windows:
+    generate: false

@@ -1,64 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:livekit_client/livekit_client.dart';
 
-class CameraBackgroundView extends StatefulWidget {
-  const CameraBackgroundView({super.key});
+import '../../../../l10n/l10n.dart';
+import '../../../shared/participant_video.dart';
+import '../../../theme/theme.dart';
 
-  @override
-  State<CameraBackgroundView> createState() => _CameraBackgroundViewState();
-}
+/// Full-bleed front camera behind Home (dev-0.1.6): black until a track is
+/// given, then a 500 ms crossfade to the live feed. The screen owns the
+/// camera (`MediaPreview`); this only draws it.
+class CameraBackgroundView extends StatelessWidget {
+  const CameraBackgroundView({super.key, required this.videoTrack});
 
-class _CameraBackgroundViewState extends State<CameraBackgroundView> {
-  LocalVideoTrack? _videoTrack;
-
-  @override
-  void initState() {
-    super.initState();
-    // Delay initialization to avoid blocking the route transition animation
-    // and to ensure any previous Room instance has finished disconnecting
-    Future.delayed(const Duration(milliseconds: 350), () {
-      if (mounted) _initCamera();
-    });
-  }
-
-  Future<void> _initCamera() async {
-    try {
-      final track = await LocalVideoTrack.createCameraTrack(
-        const CameraCaptureOptions(cameraPosition: CameraPosition.front),
-      );
-      if (mounted) {
-        setState(() {
-          _videoTrack = track;
-        });
-      }
-    } catch (e) {
-      debugPrint('Failed to init camera for background: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    final track = _videoTrack;
-    if (track != null) {
-      // Stop and dispose immediately to release hardware locks for the next screen
-      track.stop();
-      track.dispose();
-    }
-    super.dispose();
-  }
+  /// Opaque video handle (`MediaPreviewState.videoTrack`); null is black.
+  final Object? videoTrack;
 
   @override
   Widget build(BuildContext context) {
+    final track = videoTrack;
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
-      child: _videoTrack == null
-          ? Container(key: const ValueKey('placeholder'), color: Colors.black)
-          : Stack(
+      duration: AppMotion.resolve(context, AppMotion.long),
+      child: track == null
+          ? const ColoredBox(
+              key: ValueKey('placeholder'),
+              color: Colors.black,
+              child: SizedBox.expand(),
+            )
+          : SizedBox.expand(
               key: const ValueKey('camera'),
-              fit: StackFit.expand,
-              children: [
-                VideoTrackRenderer(_videoTrack!, fit: VideoViewFit.cover),
-              ],
+              child: ParticipantVideo(
+                videoTrack: track,
+                name: context.l10n.appName,
+              ),
             ),
     );
   }
