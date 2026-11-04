@@ -1,0 +1,1149 @@
+openapi: 3.1.0
+info:
+  title: RoomTime API
+  version: 1.0.0
+  summary: Room access API
+  license:
+    name: AGPL-3.0-only
+    identifier: AGPL-3.0-only
+  description: |
+    Room access API of the RoomTime backend. Clients need only the API
+    base URL: the LiveKit URL is returned by `join`.
+
+    ## Transport
+    Plain JSON over HTTPS. TLS terminates at the edge proxy. There is no application-layer
+    encryption; the former `/v1/keys/public` "E2EE" envelope was removed.
+
+    ## Identifiers
+    - `roomId`: 128-bit random, lowercase base32 without padding (26 chars). It is the LiveKit room
+      name. Returned to the room owner only.
+    - `code`: 10 letters from `abcdefghjkmnpqrstuvwxyz` (no `i`, `l`, `o`). The canonical form is
+      returned in `code`; `inviteUrl` shows it as `abc-defg-hjk`. Path parameters accept any case,
+      whitespace and dashes; anything else is `400 invalid_code`. The code **is** the invitation:
+      unknown, expired, ended and revoked codes are indistinguishable (`404 room_not_found`).
+    - `ownerToken`: 256-bit random, base64url without padding (43 chars). Returned once by
+      `POST /v1/rooms`; the server stores only its SHA-256. It is the only proof of ownership.
+    - `identity`: `p_` + first 20 chars of lowercase base32(HMAC-SHA256(server secret, roomId ‖ guestId)).
+      Derived by the server; the same `guestId` always gets the same identity in a room, so a
+      reconnect replaces the old LiveKit session. Clients never choose identities.
+
+    ## Errors
+    Every error is an RFC 9457 `application/problem+json` body with a machine-readable `code`
+    (see `Problem`). `type` is always `about:blank` and `title` is the HTTP status text. `detail`
+    is a fixed English sentence for logs and debugging, never for UI copy. `requestId` matches
+    the `X-Request-ID` response header. Unknown routes answer `404 not_found`, unsupported
+    methods `405 method_not_allowed`.
+
+    ## Rate limits
+    Per client IP, token bucket, in-memory per instance. The client IP is the TCP peer unless the
+    peer is in `TRUSTED_PROXIES`; only then `X-Forwarded-For` (right-to-left, skipping trusted
+    hops) or `X-Real-IP` is used. IPv6 clients are grouped by /64. Exceeding a limit returns
+    `429 rate_limited` with `Retry-After` (seconds).
+
+    | Route group | Sustained | Burst |
+    | --- | --- | --- |
+    | `POST /v1/rooms` | 20 / hour | 5 |
+    | `GET /v1/rooms/{code}` | 300 / hour | 30 |
+    | `POST /v1/rooms/{code}/join` | 120 / hour | 20 |
+    | owner endpoints | 600 / hour | 60 |
+    | owner endpoints, unauthorized | 30 / hour | 10 |
+
+    "Owner endpoints, unauthorized" is an extra budget charged only by owner requests that would
+    end in `404 room_not_found` or `403 forbidden` (unknown code, or a missing or wrong owner
+    token). Both answers tell whether a code exists, so each one first takes a token from this
+    budget; when none is left the request gets `429 rate_limited` instead, the same for existing
+    and unknown codes. Tokens are taken atomically, so parallel requests cannot exceed the budget.
+    Requests with a valid owner token are never charged and never refused by this budget (only by
+    the owner endpoints limit), so failures of other clients behind the same IP (shared Wi-Fi,
+    carrier NAT) cannot lock the host out. Together with lookup and join this keeps the per-IP
+    room-existence oracle at a few hundred probes per hour.
+
+    Limiter memory is bounded (100 000 client keys per route group). When it is full, the least
+    recently used key is evicted, which only resets that client's budget; new clients are never
+    refused because the table is full.
+
+    The webhook is not rate limited (it is authenticated by signature).
+
+    Separately, each room counts wrong passwords: after 5 failed attempts the room refuses all
+    password attempts (correct or not) for 30 s, doubling per further failure up to 15 min,
+    returned as `429 too_many_attempts` with `Retry-After`. Only verified wrong passwords count;
+    an attempt still being verified holds one unit of the remaining budget, so parallel guesses
+    cannot exceed it, and a join that finds the budget held that way gets `503 server_busy`
+    (`Retry-After: 1`), never `429`. A correct password or a password change resets the
+    counter; the counter expires 1 h after the last attempt.
+
+    Password hashing (create, password change, join with a password) runs at most
+    min(CPU count, 4) at a time per instance; a request that waits over 2 s for a slot gets
+    `503 server_busy` with `Retry-After: 1`.
+
+    ## Passwords and privacy
+    Room passwords are accepted only in JSON request bodies (never in paths, query strings or
+    headers), stored as Argon2id (m=19 MiB, t=2, p=1) and never logged. Access logs contain the
+    route pattern (for example `/v1/rooms/{code}/join`), status, duration and request ID only:
+    no raw paths, query strings, bodies or client IPs.
+
+    ## JSON requests
+    Request bodies must be `application/json`, at most 4 KiB, a single object, and must not
+    contain unknown members (`400 invalid_request`). Oversized bodies get `413 payload_too_large`;
+    another content type gets `415 unsupported_media_type`.
+
+    ## Room lifetime
+    `expiresAt` is the validity of the invitation and of the host controls, not a limit on the
+    call. At `expiresAt` the room state is deleted: lookups and joins get `404`, and owner
+    endpoints get `404`, so the host can no longer mute, remove, ban or end. A call in progress
+    continues while participants stay connected, but no new media session is admitted (see the
+    webhook: a participant who connects or fully reconnects to LiveKit after `expiresAt` is
+    removed). Clients should warn the host before `expiresAt`.
+
+    ## Enforcement at the media level
+    LiveKit runs with `room.auto_create: false`: only `join` creates LiveKit rooms. Media tokens
+    stay valid for 10 minutes and LiveKit refreshes them while connected, so the API also checks
+    every LiveKit `participant_joined` webhook: a participant of an ended room closes the room, and
+    a participant of a room without valid state, with a banned identity, or with an identity
+    removed without a ban in the last 12 minutes (and not admitted by `join` since), is removed.
+
+    ## Scaling model
+    Single API instance by default. Room state (rooms, codes, bans, removal markers,
+    password-failure counters) lives in Redis and is shared across replicas. Per-IP rate limiters are in memory and diverge
+    across replicas (each replica enforces its own budget).
+
+    ## CORS
+    Exact-origin allowlist from `CORS_ALLOWED_ORIGINS`; empty means same-origin only (no CORS
+    headers). With `ENV=development`, loopback origins (`localhost`, `127.0.0.0/8`, `::1`) on any
+    port are also allowed. Allowed methods `GET, POST, PATCH`; allowed headers `Authorization,
+    Content-Type, X-Request-ID`; exposed headers `Retry-After, X-Request-ID`.
+servers:
+  - url: /
+    description: Same origin as the client (behind the edge proxy)
+tags:
+  - name: rooms
+    description: Create, look up and join rooms
+  - name: owner
+    description: Host controls, authorized only by the owner token
+  - name: system
+    description: Health and LiveKit webhooks
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      operationId: healthz
+      summary: Liveness
+      description: Returns 200 while the process serves HTTP. Does not touch Redis or LiveKit.
+      responses:
+        "200":
+          description: Alive
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+              example:
+                status: ok
+  /readyz:
+    get:
+      tags: [system]
+      operationId: readyz
+      summary: Readiness
+      description: Pings Redis with a 1 s timeout.
+      responses:
+        "200":
+          description: Ready
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+              example:
+                status: ready
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+  /v1/webhooks/livekit:
+    post:
+      tags: [system]
+      operationId: livekitWebhook
+      summary: LiveKit webhook receiver
+      description: |
+        Called by LiveKit. The `Authorization` header carries a LiveKit JWT (no `Bearer` prefix)
+        signed with the API key pair, whose `sha256` claim must match the body. Body limit 64 KiB.
+
+        - `room_finished`: room state is deleted when the room was ended by the owner or is past
+          `expiresAt`; an empty room that is still valid stays joinable.
+        - `participant_joined` (end, ban and removal at the media level, for clients that
+          reconnect directly to LiveKit with a still-valid media token): if the room was ended by
+          the owner, the LiveKit room is deleted (everyone is disconnected); if the room has no
+          state or is past `expiresAt`, the identity is in the room's ban set, or the identity was
+          removed without a ban in the last 12 minutes and has not been admitted by `join` since,
+          that participant is removed. Ban and removal apply to the identity whatever its role.
+        - Other events, and events whose room name is not a `roomId`, are accepted and ignored.
+
+        Records are never created here. Every action is idempotent and the whole request is bounded
+        by a 5 s timeout; a Redis or LiveKit failure answers `503`, so LiveKit retries.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: LiveKit-signed JWT with a `sha256` claim of the body.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/webhook+json:
+            schema:
+              $ref: "#/components/schemas/WebhookEvent"
+      responses:
+        "204":
+          description: Accepted
+        "401":
+          description: Missing or invalid signature
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              example:
+                type: about:blank
+                title: Unauthorized
+                status: 401
+                code: invalid_signature
+                detail: Webhook signature is not valid.
+                requestId: 3f2a9c0e6b1d4e8f9a7b6c5d4e3f2a1b
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /v1/rooms:
+    post:
+      tags: [rooms]
+      operationId: createRoom
+      summary: Create a room
+      description: |
+        Creates a room and returns its owner token (shown once). The request body is optional;
+        an empty body creates a room with defaults. LiveKit is not contacted.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomRequest"
+            examples:
+              defaults:
+                value: {}
+              protected:
+                value:
+                  name: Family
+                  password: correct horse
+                  maxParticipants: 6
+                  lifetimeMinutes: 120
+                  e2ee: false
+      responses:
+        "201":
+          description: Created
+          headers:
+            Location:
+              description: "`/v1/rooms/{code}`"
+              schema:
+                type: string
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedRoom"
+        "400":
+          description: |
+            `invalid_request` (malformed JSON, unknown member, wrong type), `invalid_name`,
+            `invalid_password_format`, `invalid_max_participants`, `invalid_lifetime`.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/StoreUnavailableOrBusy"
+  /v1/rooms/{code}:
+    parameters:
+      - $ref: "#/components/parameters/Code"
+    get:
+      tags: [rooms]
+      operationId: lookupRoom
+      summary: Pre-join lookup
+      description: |
+        Public metadata for the join screen. `name` is omitted when a password is required.
+        `inviteUrl` is the same link the owner got from create or rotate-code; it carries nothing
+        beyond the code that is already in the request path.
+      responses:
+        "200":
+          description: Room metadata
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomLookup"
+              example:
+                code: abcdefghjk
+                inviteUrl: https://calls.example.org/r/abc-defg-hjk
+                name: Family
+                passwordRequired: false
+                e2ee: false
+                locked: false
+                expiresAt: "2026-11-03T16:00:00Z"
+        "400":
+          $ref: "#/components/responses/InvalidCode"
+        "404":
+          $ref: "#/components/responses/RoomNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+    patch:
+      tags: [owner]
+      operationId: updateRoom
+      summary: Update room settings
+      description: |
+        Owner only. At least one member is required. `password: null` disables the password;
+        a string sets a new one (and resets the wrong-password counter). `name: null` or `""`
+        clears the label.
+      security:
+        - ownerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoomRequest"
+      responses:
+        "200":
+          description: Updated room
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerRoom"
+        "400":
+          description: "`invalid_code`, `invalid_request` (also for an empty object), `invalid_name`, `invalid_password_format`."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/RoomNotFound"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/StoreUnavailableOrBusy"
+  /v1/rooms/{code}/join:
+    parameters:
+      - $ref: "#/components/parameters/Code"
+    post:
+      tags: [rooms]
+      operationId: joinRoom
+      summary: Join a room
+      description: |
+        Returns a 10-minute LiveKit token for the server-derived identity (`roomJoin` for
+        `roomId`, `canPublish`, `canSubscribe`, `canPublishData`; never `roomAdmin`).
+
+        With a valid `Authorization: Bearer <ownerToken>` the caller joins as `host` and skips
+        the ban, lock and password checks. An absent or wrong token is not an error: the caller
+        joins as `participant`. A missing room is never created.
+
+        Check order for participants: ban (`403 participant_banned`), lock (`423 room_locked`),
+        password (`401 password_required`, `429 too_many_attempts`, `403 invalid_password`), then
+        capacity (`409 room_full`). A removal without a ban is not checked here: a successful join
+        lifts it (see `removeParticipant`).
+
+        Capacity: the API creates the LiveKit room if needed (idempotent `CreateRoom` with the
+        room's `maxParticipants`; the API is the only creator) and counts the participants
+        currently listed by LiveKit (`ListParticipants`; the room's `numParticipants` lags by up to
+        5 s and is not used). A participant already connected with the same identity does not
+        count, so reconnects succeed. Two joins racing for the last place can both get `200`;
+        LiveKit then refuses the second connection, which clients show as room full.
+
+        After creating the LiveKit room the API reads the room state again: if the owner ended the
+        room (or rotated the code, or it expired) while this join was in progress, the answer is
+        `404 room_not_found` and a LiveKit room recreated for an ended room is deleted again.
+      security:
+        - {}
+        - ownerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRequest"
+      responses:
+        "200":
+          description: Joined
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JoinResponse"
+              example:
+                token: example-livekit-access-token
+                livekitUrl: wss://calls.example.org
+                identity: p_k3j5x2m7q4r6t8v2w3y5
+                role: participant
+                room:
+                  code: abcdefghjk
+                  inviteUrl: https://calls.example.org/r/abc-defg-hjk
+                  name: Family
+                  passwordRequired: false
+                  e2ee: false
+                  locked: false
+                  maxParticipants: 10
+                  expiresAt: "2026-11-03T16:00:00Z"
+        "400":
+          description: "`invalid_code`, `invalid_request`, `invalid_display_name`, `invalid_guest_id`, `invalid_password_format`."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "401":
+          description: "`password_required`: the room has a password and none (or an empty one) was sent."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          description: "`invalid_password`, or `participant_banned` when the owner removed this identity with `ban: true`."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "404":
+          $ref: "#/components/responses/RoomNotFound"
+        "409":
+          description: "`room_full`"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "423":
+          description: "`room_locked`"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "429":
+          description: "`too_many_attempts` (room password lock-out) or `rate_limited` (per-IP limit). Both send `Retry-After`."
+          headers:
+            Retry-After:
+              $ref: "#/components/headers/RetryAfter"
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "500":
+          $ref: "#/components/responses/Internal"
+        "503":
+          $ref: "#/components/responses/UnavailableOrBusy"
+  /v1/rooms/{code}/end:
+    parameters:
+      - $ref: "#/components/parameters/Code"
+    post:
+      tags: [owner]
+      operationId: endRoom
+      summary: End the room for everyone
+      description: |
+        Owner only. Marks the room ended (from then on lookups and joins get `404`, including joins
+        already in progress), deletes the LiveKit room (disconnecting everyone) and deletes the
+        room state; the code becomes `room_not_found`. If LiveKit fails the response is
+        `503 media_unavailable`, the room stays closed to newcomers and the owner may retry. A
+        client that reconnects to LiveKit with a still-valid media token cannot revive the room
+        (LiveKit does not auto-create rooms, and the `participant_joined` webhook closes an ended
+        room again). No request body is read.
+      security:
+        - ownerToken: []
+      responses:
+        "204":
+          description: Ended
+        "400":
+          $ref: "#/components/responses/InvalidCode"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/RoomNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /v1/rooms/{code}/rotate-code:
+    parameters:
+      - $ref: "#/components/parameters/Code"
+    post:
+      tags: [owner]
+      operationId: rotateCode
+      summary: Revoke the invite and issue a new code
+      description: |
+        Owner only. Issues a new `code`/`inviteUrl`; the old code becomes `room_not_found` for
+        everyone (including the owner). Participants already in the call stay; identities do not
+        change. The owner token stays valid. No request body is read. From now on `lookupRoom`
+        and `joinRoom` under the new code return the new `inviteUrl`.
+      security:
+        - ownerToken: []
+      responses:
+        "200":
+          description: New code
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerRoom"
+        "400":
+          $ref: "#/components/responses/InvalidCode"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/RoomNotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/StoreUnavailable"
+  /v1/rooms/{code}/participants/{identity}/mute:
+    parameters:
+      - $ref: "#/components/parameters/Code"
+      - $ref: "#/components/parameters/Identity"
+    post:
+      tags: [owner]
+      operationId: muteParticipantTrack
+      summary: Mute a published track
+      security:
+        - ownerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MuteRequest"
+      responses:
+        "204":
+          description: Muted
+        "400":
+          description: "`invalid_code`, `invalid_identity`, `invalid_request`, `invalid_track_sid`."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: "`room_not_found`, or `track_not_found` when LiveKit does not know the participant or track."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+  /v1/rooms/{code}/participants/{identity}/remove:
+    parameters:
+      - $ref: "#/components/parameters/Code"
+      - $ref: "#/components/parameters/Identity"
+    post:
+      tags: [owner]
+      operationId: removeParticipant
+      summary: Remove (and optionally ban) a participant
+      description: |
+        Owner only. With `ban: true` the identity is added to the room ban set first (until the
+        room expires); a ban succeeds even if the participant is not connected. Without a ban,
+        removing a participant who is not connected is `404 participant_not_found`. The body is
+        optional (`ban` defaults to false).
+
+        Without a ban the participant may come back only through `join` (which applies the lock
+        and the password as usual; a successful `join` lifts the removal). For 12 minutes, the
+        longest life of a media token issued before the removal, a direct reconnect to LiveKit
+        with such a token is removed by the `participant_joined` webhook, even if the room was
+        locked or the code rotated meanwhile. This removal marker is recorded before the
+        participant is disconnected (also when the answer is `404`); a store failure is `503` and
+        nothing is disconnected.
+
+        What a ban does and does not do: the identity is derived from the room and the client's
+        `guestId`, which is generated per installation. A ban therefore blocks rejoining from the
+        same installation: `join` answers `403 participant_banned`, and a direct reconnect to
+        LiveKit with a still-valid media token is removed by the `participant_joined` webhook. It
+        does not stop a person who reinstalls the app or resets its data (a new `guestId` gives a
+        new identity). For full revocation, also call `rotate-code` (the old invitation stops
+        working) and, for a password room, change the password.
+      security:
+        - ownerToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoveRequest"
+      responses:
+        "204":
+          description: Removed
+        "400":
+          description: "`invalid_code`, `invalid_identity`, `invalid_request`."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: "`room_not_found` or `participant_not_found`."
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/XRequestID"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+components:
+  securitySchemes:
+    ownerToken:
+      type: http
+      scheme: bearer
+      description: |
+        `Authorization: Bearer <ownerToken>` from `POST /v1/rooms`. Compared in constant time
+        against the stored SHA-256. A missing, malformed or wrong token on an owner endpoint is
+        `403 forbidden`; a missing room is `404`; a store error is `503`. Never allowed otherwise.
+        Each `403`/`404` is charged to the per-IP "owner endpoints, unauthorized" budget (see Rate
+        limits); when it is spent such requests get `429 rate_limited` instead. A valid token is
+        never charged or refused by that budget.
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      description: Room code, any case, dashes and whitespace ignored (for example `abc-defg-hjk`).
+      schema:
+        type: string
+      example: abc-defg-hjk
+    Identity:
+      name: identity
+      in: path
+      required: true
+      description: Participant identity as returned by `join` and seen in LiveKit.
+      schema:
+        $ref: "#/components/schemas/Identity"
+  headers:
+    XRequestID:
+      description: Request ID. A client-sent `X-Request-ID` matching `^[A-Za-z0-9._-]{1,64}$` is echoed; otherwise one is generated.
+      schema:
+        type: string
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    InvalidCode:
+      description: "`invalid_code`"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            code: invalid_code
+            detail: The room code is not valid.
+            requestId: 3f2a9c0e6b1d4e8f9a7b6c5d4e3f2a1b
+    Forbidden:
+      description: "`forbidden`: missing or wrong owner token."
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: about:blank
+            title: Forbidden
+            status: 403
+            code: forbidden
+            detail: A valid owner token is required.
+            requestId: 3f2a9c0e6b1d4e8f9a7b6c5d4e3f2a1b
+    RoomNotFound:
+      description: "`room_not_found`: unknown, expired, ended or revoked code."
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          example:
+            type: about:blank
+            title: Not Found
+            status: 404
+            code: room_not_found
+            detail: Room not found.
+            requestId: 3f2a9c0e6b1d4e8f9a7b6c5d4e3f2a1b
+    PayloadTooLarge:
+      description: "`payload_too_large`"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnsupportedMediaType:
+      description: "`unsupported_media_type`: a non-empty body that is not `application/json`."
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    RateLimited:
+      description: "`rate_limited`: per-IP limit exceeded (on owner endpoints also the budget for unauthorized requests)."
+      headers:
+        Retry-After:
+          $ref: "#/components/headers/RetryAfter"
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Internal:
+      description: "`internal`"
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    StoreUnavailable:
+      description: "`store_unavailable`: Redis error or timeout (fail-closed)."
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Unavailable:
+      description: "`store_unavailable` (Redis) or `media_unavailable` (LiveKit RoomService)."
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    StoreUnavailableOrBusy:
+      description: |
+        `store_unavailable`: Redis error or timeout (fail-closed). `server_busy`: no password
+        hashing slot freed up within 2 s; sent with `Retry-After: 1`.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    UnavailableOrBusy:
+      description: |
+        `store_unavailable` (Redis), `media_unavailable` (LiveKit RoomService) or `server_busy`
+        (no password hashing slot within 2 s, or the room's remaining password attempts are all
+        being verified right now); `server_busy` is sent with `Retry-After: 1`.
+      headers:
+        X-Request-ID:
+          $ref: "#/components/headers/XRequestID"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 problem details with a machine-readable code.
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          const: about:blank
+        title:
+          type: string
+          description: HTTP status text.
+        status:
+          type: integer
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        detail:
+          type: string
+          description: Fixed English sentence for debugging; not for UI copy.
+        requestId:
+          type: string
+          description: Same as the `X-Request-ID` response header.
+    ErrorCode:
+      type: string
+      enum:
+        - invalid_request
+        - unsupported_media_type
+        - payload_too_large
+        - invalid_code
+        - invalid_name
+        - invalid_password_format
+        - invalid_max_participants
+        - invalid_lifetime
+        - invalid_display_name
+        - invalid_guest_id
+        - invalid_identity
+        - invalid_track_sid
+        - password_required
+        - invalid_password
+        - forbidden
+        - participant_banned
+        - room_not_found
+        - participant_not_found
+        - track_not_found
+        - not_found
+        - method_not_allowed
+        - room_full
+        - room_locked
+        - too_many_attempts
+        - rate_limited
+        - invalid_signature
+        - internal
+        - store_unavailable
+        - media_unavailable
+        - server_busy
+      description: |
+        | code | status | meaning |
+        | --- | --- | --- |
+        | invalid_request | 400 | Malformed JSON, unknown member, wrong type, missing body, or an empty PATCH |
+        | unsupported_media_type | 415 | Body is not `application/json` |
+        | payload_too_large | 413 | Body over 4 KiB (64 KiB for the webhook) |
+        | invalid_code | 400 | Code is not 10 letters of the code alphabet |
+        | invalid_name | 400 | Room label over 40 characters or with control/format characters |
+        | invalid_password_format | 400 | Password not 4–64 characters or over 72 bytes |
+        | invalid_max_participants | 400 | Not in 2–10 |
+        | invalid_lifetime | 400 | Not in 15–1440 minutes |
+        | invalid_display_name | 400 | Not 1–32 printable characters after trimming |
+        | invalid_guest_id | 400 | Not a UUID in 8-4-4-4-12 form |
+        | invalid_identity | 400 | Path identity is not `p_` + 20 base32 chars |
+        | invalid_track_sid | 400 | `trackSid` is not a LiveKit track SID (`TR_…`, ≤ 64 chars) |
+        | password_required | 401 | Room needs a password and none was sent |
+        | invalid_password | 403 | Wrong password |
+        | forbidden | 403 | Owner endpoint without a valid owner token |
+        | participant_banned | 403 | This identity was banned from the room |
+        | room_not_found | 404 | Unknown, expired, ended or revoked code |
+        | participant_not_found | 404 | Participant to remove is not connected |
+        | track_not_found | 404 | Participant or track to mute not found in LiveKit |
+        | not_found | 404 | Unknown route |
+        | method_not_allowed | 405 | Unsupported method for the route |
+        | room_full | 409 | `maxParticipants` reached |
+        | room_locked | 423 | Owner locked the room |
+        | too_many_attempts | 429 | Room password lock-out; see `Retry-After` |
+        | rate_limited | 429 | Per-IP rate limit; see `Retry-After` |
+        | invalid_signature | 401 | Webhook signature missing or invalid |
+        | internal | 500 | Unexpected server error |
+        | store_unavailable | 503 | Redis unavailable or timed out |
+        | media_unavailable | 503 | LiveKit RoomService unavailable or failed |
+        | server_busy | 503 | Password hashing at capacity or the room's password attempts are in flight; retry after `Retry-After` (1 s) |
+    RoomCode:
+      type: string
+      pattern: "^[abcdefghjkmnpqrstuvwxyz]{10}$"
+      description: Canonical room code.
+      example: abcdefghjk
+    RoomID:
+      type: string
+      pattern: "^[a-z2-7]{26}$"
+      example: l6lehhbfpqujofffzs4semv4ry
+    Identity:
+      type: string
+      pattern: "^p_[a-z2-7]{20}$"
+      example: p_k3j5x2m7q4r6t8v2w3y5
+    InviteURL:
+      type: string
+      format: uri
+      description: |
+        `PUBLIC_BASE_URL` + `/r/` + code shown as `abc-defg-hjk`. The server is the only source of
+        the invite link: create, update, rotate-code, lookup and join return the same value for
+        the current code, so clients show and share it as is and never build it themselves.
+      example: https://calls.example.org/r/abc-defg-hjk
+    Timestamp:
+      type: string
+      format: date-time
+      description: RFC 3339, UTC, whole seconds.
+      example: "2026-11-03T16:00:00Z"
+    Status:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, ready]
+    CreateRoomRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: [string, "null"]
+          maxLength: 40
+          description: Optional label, trimmed; empty means no label.
+        password:
+          type: [string, "null"]
+          minLength: 4
+          maxLength: 64
+          description: 4–64 characters and at most 72 bytes of UTF-8. Omit or null for no password.
+        maxParticipants:
+          type: [integer, "null"]
+          minimum: 2
+          maximum: 10
+          default: 10
+        lifetimeMinutes:
+          type: [integer, "null"]
+          minimum: 15
+          maximum: 1440
+          default: 240
+        e2ee:
+          type: [boolean, "null"]
+          default: false
+          description: Stored flag only; media E2EE keys never reach the server.
+    OwnerRoom:
+      type: object
+      description: Room as seen by its owner.
+      required: [roomId, code, inviteUrl, passwordRequired, e2ee, locked, maxParticipants, expiresAt]
+      properties:
+        roomId:
+          $ref: "#/components/schemas/RoomID"
+        code:
+          $ref: "#/components/schemas/RoomCode"
+        inviteUrl:
+          $ref: "#/components/schemas/InviteURL"
+        name:
+          type: string
+          description: Omitted when the room has no label.
+        passwordRequired:
+          type: boolean
+        e2ee:
+          type: boolean
+        locked:
+          type: boolean
+        maxParticipants:
+          type: integer
+          minimum: 2
+          maximum: 10
+        expiresAt:
+          allOf:
+            - $ref: "#/components/schemas/Timestamp"
+          description: End of the invitation and of the host controls, not of the call (see Room lifetime).
+    CreatedRoom:
+      allOf:
+        - $ref: "#/components/schemas/OwnerRoom"
+        - type: object
+          required: [ownerToken]
+          properties:
+            ownerToken:
+              type: string
+              pattern: "^[A-Za-z0-9_-]{43}$"
+              description: Returned only here. Keep in secure storage per `roomId`.
+    RoomLookup:
+      type: object
+      required: [code, inviteUrl, passwordRequired, e2ee, locked, expiresAt]
+      properties:
+        code:
+          $ref: "#/components/schemas/RoomCode"
+        inviteUrl:
+          $ref: "#/components/schemas/InviteURL"
+        name:
+          type: string
+          description: Omitted when the room has no label or requires a password.
+        passwordRequired:
+          type: boolean
+        e2ee:
+          type: boolean
+        locked:
+          type: boolean
+        expiresAt:
+          $ref: "#/components/schemas/Timestamp"
+    JoinRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName, guestId]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 32
+          description: Trimmed; 1–32 characters without control or invisible format characters. Shown to others; never used for authorization.
+        guestId:
+          type: string
+          format: uuid
+          description: Random UUID generated once per installation and kept locally.
+        password:
+          type: [string, "null"]
+          description: Required when `passwordRequired`. Ignored for rooms without a password and for the owner.
+    JoinedRoom:
+      type: object
+      required: [code, inviteUrl, passwordRequired, e2ee, locked, maxParticipants, expiresAt]
+      properties:
+        roomId:
+          allOf:
+            - $ref: "#/components/schemas/RoomID"
+          description: "Present only for `role: host`."
+        code:
+          $ref: "#/components/schemas/RoomCode"
+        inviteUrl:
+          $ref: "#/components/schemas/InviteURL"
+        name:
+          type: string
+          description: Omitted when the room has no label.
+        passwordRequired:
+          type: boolean
+        e2ee:
+          type: boolean
+        locked:
+          type: boolean
+        maxParticipants:
+          type: integer
+        expiresAt:
+          $ref: "#/components/schemas/Timestamp"
+    JoinResponse:
+      type: object
+      required: [token, livekitUrl, identity, role, room]
+      properties:
+        token:
+          type: string
+          description: LiveKit access token, valid 10 minutes; LiveKit refreshes it while connected. Do not persist.
+        livekitUrl:
+          type: string
+          description: "`LIVEKIT_PUBLIC_URL` from server config (ws:// or wss://)."
+          example: wss://calls.example.org
+        identity:
+          $ref: "#/components/schemas/Identity"
+        role:
+          type: string
+          enum: [host, participant]
+        room:
+          $ref: "#/components/schemas/JoinedRoom"
+    UpdateRoomRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        locked:
+          type: boolean
+        password:
+          type: [string, "null"]
+          minLength: 4
+          maxLength: 64
+          description: New password (4–64 characters, ≤ 72 bytes), or null to remove it.
+        name:
+          type: [string, "null"]
+          maxLength: 40
+          description: New label, or null/empty to clear it.
+    MuteRequest:
+      type: object
+      additionalProperties: false
+      required: [trackSid]
+      properties:
+        trackSid:
+          type: string
+          pattern: "^TR_[\\x21-\\x7e]{1,61}$"
+          description: LiveKit SID of the published track.
+    RemoveRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        ban:
+          type: boolean
+          default: false
+    WebhookEvent:
+      type: object
+      description: LiveKit webhook event (subset; other members are ignored).
+      properties:
+        event:
+          type: string
+          examples: [room_finished, room_started, participant_joined, participant_left]
+        room:
+          type: object
+          properties:
+            name:
+              type: string
+              description: LiveKit room name (= `roomId`).
