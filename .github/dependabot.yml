@@ -1,0 +1,29 @@
+version: 2
+
+# Weekly updates, minor and patch versions grouped into one pull request per ecosystem; major
+# versions arrive as separate pull requests. Commit messages follow Conventional Commits.
+# Dependabot commits carry no DCO sign-off, so the `dco` job in ci.yml skips its pull requests.
+updates:
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build(client)"
+    groups:
+      pub-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]

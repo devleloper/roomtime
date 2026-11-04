@@ -1,0 +1,45 @@
+RoomTime
+Copyright (C) 2026 The RoomTime Authors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License, version 3 only
+(SPDX-License-Identifier: AGPL-3.0-only), as published by the Free Software
+Foundation. See the LICENSE file for the full text.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+-------------------------------------------------------------------------------
+Third-party material bundled in this repository
+-------------------------------------------------------------------------------
+
+Inter 4.1 (variable font)
+  Files:     assets/fonts/inter/InterVariable.ttf
+             assets/fonts/inter/InterVariable-Italic.ttf
+  Copyright: Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
+  License:   SIL Open Font License, Version 1.1 (OFL-1.1)
+             Full text: assets/fonts/inter/OFL.txt
+
+Sound effects
+  Files:     assets/sounds/accept.m4a
+             assets/sounds/exit.m4a
+  Origin:    original work of the RoomTime project, synthesised by
+             assets/sounds/tool/make_sounds.py (2026-11-04).
+  License:   AGPL-3.0-only, like the rest of the project.
+
+-------------------------------------------------------------------------------
+Third-party material included in builds
+-------------------------------------------------------------------------------
+
+Material Icons (font bundled by Flutter, "uses-material-design: true")
+  Copyright: Google LLC
+  License:   Apache License, Version 2.0 (Apache-2.0)
+
+LiveKit Flutter client SDK (Dart package livekit_client)
+  Copyright 2024 LiveKit, Inc.
+  License:   Apache License, Version 2.0 (Apache-2.0)
+
+The complete list of Dart dependencies is in pubspec.lock. Each dependency keeps
+its own license; the license texts ship inside the respective packages (pub
+cache) and with built apps via Flutter's LicenseRegistry.

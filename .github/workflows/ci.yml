@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.9"
+
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true # SDK cache, plus the pub cache keyed on **/pubspec.lock
+
+      - name: flutter pub get
+        run: flutter pub get --enforce-lockfile
+
+      - name: Generated DI code is up to date
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          if ! git diff --exit-code -- lib/core/di/injection.config.dart; then
+            echo "::error file=lib/core/di/injection.config.dart::Out of date: run 'dart run build_runner build --delete-conflicting-outputs' and commit the result"
+            exit 1
+          fi
+
+      - name: dart format
+        run: dart format --output=none --set-exit-if-changed lib test integration_test
+
+      - name: flutter analyze
+        run: flutter analyze
+
+      - name: flutter test
+        run: flutter test
+
+      - name: flutter build web
+        run: flutter build web --release --no-web-resources-cdn --dart-define-from-file=config/local.example.json
+
+  dco:
+    # Dependabot cannot sign off; its pull requests are reviewed and merged by a maintainer.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Every commit is signed off by its author
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for commit in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            author="$(git log -1 --format='%an <%ae>' "$commit")"
+            if ! git log -1 --format='%B' "$commit" | grep -qiF "Signed-off-by: $author"; then
+              echo "::error::$(git log -1 --format='%h %s' "$commit"): missing 'Signed-off-by: $author'"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Sign off with 'git commit -s' (see CONTRIBUTING.md, Developer Certificate of Origin)."
+            exit 1
+          fi

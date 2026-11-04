@@ -1,0 +1,67 @@
+name: Bug report
+description: Something does not work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security problems go to a private advisory, not here:** see SECURITY.md.
+        Do not paste passwords, invite codes, owner tokens or private hostnames.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Area
+      options:
+        - Rooms and invites (create, join, password, links)
+        - Calls (audio, video, reconnect, host controls)
+        - Interface and accessibility
+        - Build and platforms
+        - Documentation
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: Where did it happen? Pick all that apply.
+      multiple: true
+      options:
+        - Web (browser)
+        - iOS
+        - Android
+        - macOS
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v1.0.0 or a commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Device or OS version, browser, and which backend you use (local development or a hosted one).
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a room with a password
+        2. Open the invite link in a second browser
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include error messages, the `requestId` from API errors, and logs with secrets removed.
+    validations:
+      required: true

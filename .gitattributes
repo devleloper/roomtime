@@ -1,0 +1,22 @@
+# Normalize text files to LF in the repository and in working trees.
+* text=auto eol=lf
+
+# Binary assets: never diffed or converted.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.ttf    binary
+*.otf    binary
+*.m4a    binary
+*.mp3    binary
+*.wav    binary
+*.jar    binary
+
+# Generated code: collapsed in GitHub diffs and excluded from language statistics.
+lib/core/di/injection.config.dart        linguist-generated=true
+lib/l10n/app_localizations*.dart         linguist-generated=true
+*.g.dart                                 linguist-generated=true
+
