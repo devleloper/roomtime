@@ -151,7 +151,7 @@ class GlassDialogText extends StatelessWidget {
 /// Error line in iOS systemRed (#FF453A), read out when it appears.
 ///
 /// [plated]: for text over live camera video (Home), where the red can drop
-/// below 4.5:1 on a bright frame (A11Y-01). The line then sits on an opaque
+/// below 4.5:1 on a bright frame. The line then sits on an opaque
 /// black @ 0.9 plate (#FF453A on it: 5.1:1) with an error icon.
 class GlassErrorText extends StatelessWidget {
   const GlassErrorText(
@@ -206,7 +206,7 @@ class GlassErrorText extends StatelessWidget {
 }
 
 /// Equal-width buttons with 16 gaps; stacked when the text is large or a
-/// label's longest word does not fit its half (QA D5: Russian labels broke
+/// label's longest word does not fit its half (Russian labels broke
 /// mid-word, "Скопирова/ть"). Labels then wrap only between words.
 class GlassButtonRow extends StatelessWidget {
   const GlassButtonRow({super.key, required this.children});
@@ -265,7 +265,7 @@ enum GlassButtonStyle { primary, secondary, destructive }
 ///
 /// [GlassButtonStyle.destructive] (End for everyone, Remove) is the iOS
 /// systemRed #FF453A fill with black text and icon: 6.2:1, where white on
-/// it is 3.4:1, and clearly apart from the blue primary (F2).
+/// it is 3.4:1, and clearly apart from the blue primary.
 class GlassDialogButton extends StatelessWidget {
   const GlassDialogButton({
     super.key,
@@ -448,7 +448,7 @@ class _GlassTextFieldState extends State<GlassTextField> {
       style: const TextStyle(color: Colors.white),
       cursorColor: AppColors.primary,
       decoration: InputDecoration(
-        // Wraps instead of cutting "(optional)" off with large text (QA D6).
+        // Wraps instead of cutting "(optional)" off with large text.
         label: Text(widget.label, maxLines: 2, softWrap: true),
         labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
         floatingLabelStyle: TextStyle(

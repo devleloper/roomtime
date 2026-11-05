@@ -104,7 +104,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     Emitter<HomeState> emit,
   ) => _updateRecent(() => _recentRooms.record(event.room), emit);
 
-  /// Local list only; a storage failure leaves it as it was (CR3-7).
+  /// Local list only; a storage failure leaves it as it was.
   Future<void> _updateRecent(
     Future<void> Function() change,
     Emitter<HomeState> emit,

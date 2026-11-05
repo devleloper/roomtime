@@ -27,7 +27,7 @@ extension FailureMessage on Failure {
     MediaDeviceFailure() => l10n.failureMediaDevice,
     NetworkFailure() => l10n.failureNetwork,
     ServerFailure() => l10n.failureServer,
-    // LiveKit refused the media connection (UX3-10).
+    // LiveKit refused the media connection.
     UnknownFailure(code: 'media_refused') => l10n.failureMediaRefused,
     UnknownFailure() => l10n.failureUnknown,
   };

@@ -26,7 +26,7 @@ void main() {
       expect(first.displayName, isEmpty);
     });
 
-    // CR-C6: concurrent first loads share one guestId.
+    // concurrent first loads share one guestId.
     test('parallel first loads create one guestId, the stored one', () async {
       final store = InMemoryKeyValueStore();
       final repository = GuestProfileRepository(store);
@@ -100,7 +100,7 @@ void main() {
       expect(capped.first.code.value, 'mnpqrstu${alphabet[1]}${alphabet[1]}');
     });
 
-    // UX3-12: Undo records the removed entry again, back in its place.
+    // Undo records the removed entry again, back in its place.
     test('a restored entry goes back to its place by lastJoined', () async {
       final repository = RecentRoomsRepository(InMemoryKeyValueStore());
       await repository.record(room('abcdefghjk', 1));

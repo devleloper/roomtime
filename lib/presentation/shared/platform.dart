@@ -7,8 +7,8 @@ bool get isMobilePlatform =>
     (defaultTargetPlatform == TargetPlatform.iOS ||
         defaultTargetPlatform == TargetPlatform.android);
 
-/// Touch is the main input: phones and tablets, mobile browsers included
-/// (UX3-11). Decides autofocus, the camera flip control and the phone Home.
+/// Touch is the main input: phones and tablets, mobile browsers included.
+/// Decides autofocus, the camera flip control and the phone Home.
 bool get isTouchPlatform =>
     defaultTargetPlatform == TargetPlatform.iOS ||
     defaultTargetPlatform == TargetPlatform.android;

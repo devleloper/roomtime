@@ -242,7 +242,7 @@ void main() {
       expect: () => [RoomEnded(CallEndReason.roomDeleted, code: testCode)],
     );
 
-    // A2-03: after expiresAt the server removes full reconnects; that is
+    // after expiresAt the server removes full reconnects; that is
     // the room expiring, not the host removing you.
     blocTest<RoomBloc, RoomState>(
       'removed after expiry -> Ended(roomDeleted)',
@@ -396,7 +396,7 @@ void main() {
       await bloc.close();
     });
 
-    // CR-C1: only connected -> connected snapshots are compared.
+    // only connected -> connected snapshots are compared.
     test(
       'no leave effects when the call ends (disconnected, empty list)',
       () async {
@@ -555,7 +555,7 @@ void main() {
       await bloc.close();
     });
 
-    // A2-03: the host is warned before the invitation expires.
+    // the host is warned before the invitation expires.
     test('host is warned 10 minutes before expiresAt', () async {
       final bloc = hostBloc(
         expiresAt: clock.current.add(const Duration(minutes: 5)),
@@ -575,7 +575,7 @@ void main() {
       await bloc.close();
     });
 
-    // CR3-11: the delayed branch, on the test binding's fake clock.
+    // the delayed branch, on the test binding's fake clock.
     testWidgets('the warning fires once the lead time is reached', (
       tester,
     ) async {
@@ -594,7 +594,7 @@ void main() {
       await tester.runAsync(bloc.close);
     });
 
-    // CR3-3: the server deletes the media room before it answers 204.
+    // the server deletes the media room before it answers 204.
     test('End for everyone: a disconnect before the 204 gives exactly one '
         'Ended(endedByYou)', () async {
       final bloc = hostBloc()..add(join());
@@ -667,7 +667,7 @@ void main() {
       await bloc.close();
     });
 
-    // CR3-11: failed host actions report exactly once, the state stays.
+    // failed host actions report exactly once, the state stays.
     for (final (name, event) in [
       (
         'mute',

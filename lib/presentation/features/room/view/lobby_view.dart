@@ -107,19 +107,19 @@ class _LobbyFormState extends State<_LobbyForm> {
   int _lockoutSeconds = 0;
 
   /// Read once by screen readers: the live region keeps the time from when
-  /// the lock-out started instead of announcing every tick (UX3-04).
+  /// the lock-out started instead of announcing every tick.
   String? _lockoutAnnouncement;
   Timer? _lockoutTimer;
   bool _announceRetry = false;
 
   /// Set from the Join tap until the attempt fails: the preview is being
   /// released or the call is connecting, so no device control may reopen
-  /// the camera (CR3-1).
+  /// the camera.
   bool _joining = false;
 
   /// Keyboard-first devices focus the empty name field; otherwise the lobby
-  /// shortcuts take focus, so Ctrl/⌘+D and +E work at once (CR3-5). Touch
-  /// devices, mobile web included, never autofocus a field (UX3-11).
+  /// shortcuts take focus, so Ctrl/⌘+D and +E work at once. Touch
+  /// devices, mobile web included, never autofocus a field.
   late final bool _autofocusName = !isTouchPlatform && _name.text.isEmpty;
 
   /// Access may have changed in the system settings meanwhile (CR4-1).
@@ -212,7 +212,7 @@ class _LobbyFormState extends State<_LobbyForm> {
         case InvalidPasswordFailure():
           _needsPassword = true;
           _passwordError = context.l10n.roomWrongPassword;
-          // QA D4: typing starts from an empty field on every platform.
+          // typing starts from an empty field on every platform.
           _password.clear();
           _focusPassword();
         case TooManyAttemptsFailure(:final retryAfter):
@@ -302,12 +302,12 @@ class _LobbyFormState extends State<_LobbyForm> {
           fit: StackFit.expand,
           children: [
             _LobbyBackdrop(preview: preview, name: name),
-            // No veil over the preview (F5): the user checks the camera
+            // No veil over the preview: the user checks the camera
             // here. Only the panel is frosted, with a darker tint so its
             // text reads over a bright frame. Wide windows put it on the
             // start side like the Home sidebar, phones at the bottom.
             // The band under the back button is outside the scroll view,
-            // so the scrolled card never slides beneath it (QA D8).
+            // so the scrolled card never slides beneath it.
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.only(top: _backButtonBand),
@@ -466,7 +466,7 @@ class _LobbyFormState extends State<_LobbyForm> {
         ),
         if (_needsPassword) ...[
           const SizedBox(height: 16),
-          // No autofill (SEC-23): a saved password would be offered for
+          // No autofill: a saved password would be offered for
           // every room on this origin.
           GlassTextField(
             controller: _password,

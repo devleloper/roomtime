@@ -50,8 +50,8 @@ class _CallVideoLayoutState extends State<CallVideoLayout> {
 
   /// Everyone else just left: the invite card waits [aloneCardDelay], so a
   /// removal or "end for everyone" (LiveKit drops the others before the
-  /// room disconnect arrives) never flashes "You're the only one here"
-  /// (QA D7). Joining an empty room shows the card at once.
+  /// room disconnect arrives) never flashes "You're the only one here".
+  /// Joining an empty room shows the card at once.
   Timer? _aloneGrace;
 
   @override

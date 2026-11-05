@@ -163,7 +163,7 @@ enum RoomPasswordIssue { tooShort, tooLong }
 /// Room password rule of the API, taken verbatim: 4..64 characters (Unicode
 /// code points, as the server counts runes) and at most 72 bytes of UTF-8
 /// (openapi `CreateRoomRequest.password`, server `room.ValidatePassword`).
-/// The one place the client keeps it (A6-04).
+/// The one place the client keeps it.
 abstract final class RoomPassword {
   static const minLength = 4;
   static const maxLength = 64;

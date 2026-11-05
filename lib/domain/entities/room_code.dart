@@ -27,7 +27,7 @@ final class RoomCode extends Equatable {
       } on ArgumentError {
         return null; // Broken percent-escape, e.g. a link cut by a messenger.
       } on FormatException {
-        return null; // Valid escape, invalid UTF-8 (`%FF`), CR3-8.
+        return null; // Valid escape, invalid UTF-8 (`%FF`).
       }
     }
     final normalized = candidate.toLowerCase().replaceAll(_separators, '');

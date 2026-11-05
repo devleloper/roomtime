@@ -9,7 +9,6 @@ import 'package:roomtime/l10n/app_localizations.dart';
 
 final l10n = lookupAppLocalizations(const Locale('en'));
 
-// CR3-6.
 void main() {
   const unavailable = ShareResult.unavailable;
 
@@ -63,8 +62,8 @@ void main() {
     expect(find.text('Copied'), findsNothing);
   });
 
-  // UX3-10: a refused media connection gets the spec's text.
-  // CR-1: the second copy lands before the first pill was built.
+  // a refused media connection gets the spec's text.
+  // the second copy lands before the first pill was built.
   testWidgets('two copies in one frame leave one pill, gone after the '
       'timeout', (tester) async {
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(

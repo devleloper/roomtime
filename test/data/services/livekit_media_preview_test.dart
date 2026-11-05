@@ -70,7 +70,7 @@ class FakeDevices implements PreviewDevices {
   Future<void> openSettings() async {}
 }
 
-// CR3-2: the preview adapter's sequencing, without a camera.
+// the preview adapter's sequencing, without a camera.
 void main() {
   late FakeDevices devices;
   late LiveKitMediaPreview preview;
@@ -141,7 +141,7 @@ void main() {
     expect(preview.state.videoTrack, isNull);
   });
 
-  // CR3-1: release is sticky until the lobby starts the preview again.
+  // release is sticky until the lobby starts the preview again.
   test('after release nothing reopens the camera until start', () async {
     await preview.start(camera: true, microphone: true);
     await preview.release();
@@ -256,7 +256,7 @@ void main() {
     });
   });
 
-  // UX3-02: web and macOS learn about the microphone in the lobby.
+  // web and macOS learn about the microphone in the lobby.
   group('microphone probe (web, macOS)', () {
     test('a refused microphone reads as denied', () async {
       devices.microphoneError = StateError('NotAllowedError');

@@ -165,7 +165,7 @@ void main() {
     });
   });
 
-  // QA D2: passwords reach the wire exactly as typed (no trim, no case or
+  // passwords reach the wire exactly as typed (no trim, no case or
   // Unicode normalization).
   test('create and join send the password verbatim', () async {
     const typed = ' Pa\u00A0ss\tÄ ';

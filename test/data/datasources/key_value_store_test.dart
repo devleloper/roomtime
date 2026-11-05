@@ -63,7 +63,6 @@ class FlakyStorage implements FlutterSecureStorage {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-// CR-C4 / A2-01 / SEC-14 / CR3-7.
 void main() {
   test('a transient error fails one operation as a Failure; stored data stays '
       'visible', () async {

@@ -71,7 +71,7 @@ class HomeSectionLabel extends StatelessWidget {
           header: true,
           child: Text(
             text,
-            // White @ 0.9: >= 4.5:1 over the veil on a bright frame (A11Y-02).
+            // White @ 0.9: >= 4.5:1 over the veil on a bright frame.
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.9),
               fontSize: 13,
@@ -217,7 +217,7 @@ class _JoinWithCodeFieldState extends State<JoinWithCodeField> {
             ),
             if (error != null) ...[
               const SizedBox(height: 8),
-              // Over the camera veil: on a plate (A11Y-01).
+              // Over the camera veil: on a plate.
               GlassErrorText(error, plated: true),
             ],
           ],

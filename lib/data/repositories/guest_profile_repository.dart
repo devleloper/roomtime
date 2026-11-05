@@ -19,7 +19,7 @@ class GuestProfileRepository implements IGuestProfileRepository {
   GuestProfile? _cached;
 
   /// The first load in flight; concurrent callers share it so only one
-  /// guestId is ever created (CR-C6).
+  /// guestId is ever created.
   Future<GuestProfile>? _loading;
 
   @override

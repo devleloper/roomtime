@@ -128,7 +128,7 @@ class _DraggablePipViewState extends State<DraggablePipView>
         onScaleStart: _onScaleStart,
         onScaleUpdate: _onScaleUpdate,
         onScaleEnd: _onScaleEnd,
-        // Elevation and shadow colour from the theme tokens (UX3-13).
+        // Elevation and shadow colour from the theme tokens.
         child: Material(
           elevation: AppElevation.level3,
           color: Theme.of(context).colorScheme.surfaceContainerHighest,

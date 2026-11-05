@@ -13,7 +13,7 @@ import 'join_error_view.dart';
 import 'lobby_view.dart';
 
 /// Lets the room route ask before history navigation (browser Back, a new
-/// URL) leaves a call (UX3-03). The call view attaches while it is shown; in
+/// URL) leaves a call. The call view attaches while it is shown; in
 /// every other state the route may leave at once.
 final class RoomExitGuard {
   Future<bool> Function()? _onExit;
@@ -97,7 +97,7 @@ class _RoomScreenState extends State<RoomScreen> {
             current is RoomEnded,
         builder: (context, state) => PopScope(
           // System Back outside a call goes Home instead of closing the
-          // app; in a call, CallView runs the Leave flow (UX3-03).
+          // app; in a call, CallView runs the Leave flow.
           canPop: false,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop && context.read<RoomBloc>().state is! RoomInCall) {

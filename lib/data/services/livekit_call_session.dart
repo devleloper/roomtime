@@ -271,7 +271,7 @@ class LiveKitCallSession implements CallSession {
         return const RoomNotFoundFailure();
       }
       // /rtc/validate reports any status >= 400 as NotAllowed, including
-      // a restarting media server behind the edge (CR-C7).
+      // a restarting media server behind the edge.
       final status = error.statusCode;
       if (status >= 500) return ServerFailure(statusCode: status);
       return UnknownFailure(statusCode: status, code: 'media_refused');

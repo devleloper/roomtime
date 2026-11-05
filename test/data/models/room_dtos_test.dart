@@ -2,7 +2,7 @@ import 'package:roomtime/data/models/room_dtos.dart';
 import 'package:roomtime/domain/entities/room.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// A2-02: required fields follow docs/api/openapi.yaml exactly.
+// required fields follow docs/api/openapi.yaml exactly.
 Map<String, dynamic> lookupJson() => {
   'code': 'abcdefghjk',
   'inviteUrl': 'https://calls.example.org/r/abc-defg-hjk',
@@ -104,7 +104,7 @@ void main() {
     }
   });
 
-  // SEC-17: release builds accept only wss:// media URLs.
+  // release builds accept only wss:// media URLs.
   group('media URL', () {
     test('release: wss accepted, ws and other schemes rejected', () {
       expect(
@@ -132,7 +132,7 @@ void main() {
       );
     });
 
-    test('release: ws on a loopback host is allowed (QA D3), '
+    test('release: ws on a loopback host is allowed, '
         'not on a look-alike host', () {
       for (final url in [
         'ws://localhost:8080',

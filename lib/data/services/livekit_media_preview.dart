@@ -19,7 +19,7 @@ abstract interface class PreviewTrack {
 }
 
 /// Devices and permission APIs behind [LiveKitMediaPreview]. A seam so the
-/// adapter's sequencing is testable without a camera (CR3-2); data layer
+/// adapter's sequencing is testable without a camera; data layer
 /// only.
 class PreviewDevices {
   const PreviewDevices();
@@ -79,10 +79,10 @@ class _LiveKitPreviewTrack implements PreviewTrack {
 /// the prompt before the OS shows it. Web and macOS have no such query: the
 /// camera prompt shows when the preview opens it, and the microphone is
 /// probed (opened and closed) so its prompt and a refusal show in the lobby
-/// too, not only after joining (UX3-02).
+/// too, not only after joining.
 ///
 /// [release] is sticky: until the next [start], nothing opens a device again,
-/// whatever the lobby still sends while the call is joining (CR3-1).
+/// whatever the lobby still sends while the call is joining.
 @Injectable(as: MediaPreview)
 class LiveKitMediaPreview implements MediaPreview {
   LiveKitMediaPreview({@ignoreParam PreviewDevices? devices})

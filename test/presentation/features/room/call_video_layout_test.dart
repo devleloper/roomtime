@@ -6,7 +6,7 @@ import 'package:roomtime/presentation/features/room/widgets/call_video_layout.da
 
 import '../../../helpers/fakes.dart';
 
-// QA D7: a removal drops the others before the room disconnect arrives;
+// a removal drops the others before the room disconnect arrives;
 // the invite card must not flash "alone" in between.
 void main() {
   Widget layout(List<CallParticipant> people) => MaterialApp(

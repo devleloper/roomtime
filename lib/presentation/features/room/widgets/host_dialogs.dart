@@ -199,7 +199,7 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       title: context.l10n.roomPasswordDialogTitle,
       message: context.l10n.roomPasswordDialogBody,
       body: [
-        // No autofill (SEC-23): a password manager would offer this room's
+        // No autofill: a password manager would offer this room's
         // password on every room of the same origin.
         GlassTextField(
           controller: _controller,

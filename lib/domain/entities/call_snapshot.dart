@@ -51,7 +51,7 @@ final class CallParticipant extends Equatable {
   final bool cameraEnabled;
 
   /// The media server rates this participant's connection as poor or lost,
-  /// so their audio or video may stall (UX3-14).
+  /// so their audio or video may stall.
   final bool weakConnection;
 
   /// Published microphone track, for owner mute.
@@ -115,7 +115,7 @@ final class CallSnapshot extends Equatable {
 
   /// The microphone was asked for (at join or by a toggle) but could not be
   /// opened: blocked, busy or missing. Others cannot hear this participant
-  /// until a later attempt succeeds (UX3-02).
+  /// until a later attempt succeeds.
   final bool microphoneUnavailable;
 
   CallParticipant? get local {

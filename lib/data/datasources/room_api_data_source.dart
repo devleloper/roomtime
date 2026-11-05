@@ -149,7 +149,7 @@ class RoomApiDataSource {
   }
 
   /// The room code grants entry and the identity names a person: neither
-  /// goes into logs (SEC-16).
+  /// goes into logs.
   @visibleForTesting
   static String maskPath(String path) => path
       .replaceFirst(RegExp(r'/rooms/[^/?#]+'), '/rooms/:code')

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:roomtime/domain/entities/room.dart';
 
-// A6-04: the same rule as openapi CreateRoomRequest.password and the server's
+// the same rule as openapi CreateRoomRequest.password and the server's
 // room.ValidatePassword: 4..64 code points and at most 72 bytes of UTF-8.
 void main() {
   test('4..64 Latin characters are valid', () {

@@ -11,8 +11,7 @@ import '../widgets/widgets.dart';
 /// Copies [text] and confirms with a glass HUD pill on the root overlay,
 /// so it shows above an open dialog (F4; a SnackBar sits under the dialog
 /// barrier). The pill is a live region. A refused clipboard (e.g. Safari
-/// after the user gesture expired) shows no confirmation and throws nothing
-/// (CR3-6).
+/// after the user gesture expired) shows no confirmation and throws nothing.
 Future<void> copyWithConfirmation(
   BuildContext context,
   String text,
@@ -104,7 +103,7 @@ abstract final class _CopiedHud {
     // [_entry] is set only right after `overlay.insert`, so it is always in
     // an overlay here. `mounted` is not that: it turns true only once the
     // entry has been built, so a second copy within the same frame used to
-    // skip the removal and leave a disposed pill on screen (CR-1).
+    // skip the removal and leave a disposed pill on screen.
     entry
       ..remove()
       ..dispose();
@@ -113,7 +112,7 @@ abstract final class _CopiedHud {
 
 /// Whether a share that returned [result] is finished. On web, share_plus
 /// reports a completed Web Share as `unavailable`, so only an exception
-/// means "no sharing here" there (CR3-6).
+/// means "no sharing here" there.
 @visibleForTesting
 bool shareFinished(ShareResult result, {bool web = kIsWeb}) =>
     web || result.status != ShareResultStatus.unavailable;

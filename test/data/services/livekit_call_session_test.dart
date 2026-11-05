@@ -101,7 +101,7 @@ class FakeDriver implements MediaRoomDriver {
   }
 }
 
-// CR-C2 / CR-C3: the adapter's lifecycle against a fake media room.
+// the adapter's lifecycle against a fake media room.
 void main() {
   late FakeForegroundService foreground;
   late List<FakeDriver> drivers;
@@ -241,7 +241,7 @@ void main() {
     await session.dispose();
   });
 
-  // CR-C8: every command error is a Failure.
+  // every command error is a Failure.
   test('startAudio errors surface as MediaDeviceFailure', () async {
     nextDriver = () => FakeDriver()..startAudioError = StateError('blocked');
     final session = build();
@@ -253,7 +253,7 @@ void main() {
     await session.dispose();
   });
 
-  // UX3-02: a microphone that fails at join is reported, not just logged.
+  // a microphone that fails at join is reported, not just logged.
   test('a microphone that cannot open at join is flagged until a toggle '
       'succeeds', () async {
     nextDriver = () => FakeDriver()..microphoneError = StateError('busy');
@@ -279,7 +279,7 @@ void main() {
     await session.dispose();
   });
 
-  // QA D3: a browser that blocks camera and microphone (web throws a plain
+  // a browser that blocks camera and microphone (web throws a plain
   // String from getUserMedia) still joins, receive-only, never a failure.
   test('blocked camera and microphone still connect receive-only', () async {
     const denied = 'Unable to getUserMedia: NotAllowedError: Permission denied';
@@ -323,7 +323,6 @@ void main() {
     expect(LiveKitRoomDriver.endReason(null), CallEndReason.connectionLost);
   });
 
-  // UX3-14.
   test('poor and lost connection quality read as weak', () {
     expect(LiveKitRoomDriver.isWeak(lk.ConnectionQuality.poor), isTrue);
     expect(LiveKitRoomDriver.isWeak(lk.ConnectionQuality.lost), isTrue);

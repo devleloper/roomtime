@@ -10,8 +10,7 @@ import 'package:roomtime/presentation/features/room/widgets/participant_tile.dar
 import 'package:roomtime/presentation/invite/invite_sharing.dart';
 import 'package:roomtime/presentation/theme/theme.dart';
 
-/// Review fixes inside the original dev-0.1.6 look (CR-1, F2, F4, CR-4,
-/// F12).
+/// Review fixes inside the original dev-0.1.6 look.
 void main() {
   Widget app(Widget child, {bool reduceMotion = false}) => MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -24,7 +23,7 @@ void main() {
     ),
   );
 
-  group('CR-1 speaking highlight', () {
+  group('speaking highlight', () {
     testWidgets('the glow is drawn behind the video, the border on top', (
       tester,
     ) async {
@@ -164,7 +163,7 @@ void main() {
     });
   });
 
-  group('CR-4 HUD reduced motion', () {
+  group('HUD reduced motion', () {
     testWidgets('no slide and no duration with reduced motion', (tester) async {
       final controller = CallNoticeController();
       addTearDown(controller.dispose);

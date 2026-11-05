@@ -332,7 +332,7 @@ void main() {
     expect(box.padding, const EdgeInsets.all(20));
   });
 
-  group('text fields (QA D2, D4)', () {
+  group('text fields', () {
     EditableText editable(WidgetTester tester) =>
         tester.widget<EditableText>(find.byType(EditableText));
 

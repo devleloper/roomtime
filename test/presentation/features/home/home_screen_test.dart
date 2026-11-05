@@ -25,7 +25,7 @@ import 'package:roomtime/l10n/app_localizations.dart';
 
 final l10n = lookupAppLocalizations(const Locale('en'));
 
-/// A store whose platform fails every operation (CR3-7).
+/// A store whose platform fails every operation.
 class FailingStore extends InMemoryKeyValueStore {
   bool failing = false;
 
@@ -168,7 +168,7 @@ void main() {
       expect(find.text('at /r/abcdefghjk'), findsOneWidget);
     });
 
-    // CR-3: the keyboard Go / Enter action joins, like the Join button.
+    // the keyboard Go / Enter action joins, like the Join button.
     testWidgets('the keyboard Go action joins', (tester) async {
       await pumpHome(tester);
 
@@ -257,7 +257,7 @@ void main() {
       expect(rooms.createCalls, 0);
     });
 
-    // QA D2: the password is sent exactly as typed, spaces included.
+    // the password is sent exactly as typed, spaces included.
     testWidgets('the room password is sent verbatim, not trimmed', (
       tester,
     ) async {
@@ -336,7 +336,7 @@ void main() {
       );
     }
 
-    // UX3-12: removing is undoable and the row comes back in its place.
+    // removing is undoable and the row comes back in its place.
     testWidgets('Remove offers Undo, which restores the row', (tester) async {
       await seed();
       await pumpHome(tester);
@@ -375,7 +375,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    // CR3-7: a storage failure neither crashes nor changes the list.
+    // a storage failure neither crashes nor changes the list.
     testWidgets('a storage failure on remove keeps the list', (tester) async {
       await seed();
       await pumpHome(tester);
@@ -546,7 +546,7 @@ void main() {
     });
   });
 
-  // QA D3: a malformed invite link goes straight Home with a notice; no room
+  // a malformed invite link goes straight Home with a notice; no room
   // frame, no silent redirect.
   group('malformed invite link', () {
     late PendingHomeNotice notices;

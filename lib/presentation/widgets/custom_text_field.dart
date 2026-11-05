@@ -14,11 +14,11 @@ import '../theme/app_tokens.dart';
 ///   readers as its hint, even after typing).
 /// - [isPassword]: obscured, and the platform may not alter what is typed:
 ///   no autocorrect, suggestions, capitalization or smart dashes/quotes
-///   (QA D2: iOS changed typed passwords), no autofill/spell check.
+///   (iOS changed typed passwords), no autofill/spell check.
 /// - [onSubmitted] runs on Enter / the keyboard action ([textInputAction]),
 ///   e.g. Enter-to-join.
 /// - To reset after a failed attempt call `controller.clear()`; typing
-///   then starts from an empty field on every platform (QA D4).
+///   then starts from an empty field on every platform.
 class CustomTextField extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;

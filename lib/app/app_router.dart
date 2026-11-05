@@ -15,7 +15,7 @@ import '../core/router/app_routes.dart';
 /// One guard per room page, so browser history cannot drop a call silently.
 final _roomExitGuards = <ValueKey<String>, RoomExitGuard>{};
 
-/// Notice from the room guard (a malformed invite link) for Home (QA D3).
+/// Notice from the room guard (a malformed invite link) for Home.
 final _homeNotices = PendingHomeNotice();
 
 /// Route table and the presentation side of the composition root: the only

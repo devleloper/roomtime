@@ -39,7 +39,7 @@ class RecentRoomsList extends StatelessWidget {
     return l10n.homeDaysAgo(age.inDays);
   }
 
-  /// Removes at once and offers Undo (UX3-12).
+  /// Removes at once and offers Undo.
   static void _remove(BuildContext context, HomeBloc bloc, RecentRoom room) {
     bloc.add(HomeRecentRoomRemoved(room.code));
     ScaffoldMessenger.maybeOf(context)
@@ -133,10 +133,10 @@ class _RecentRoomTile extends StatelessWidget {
       when,
       if (room.role == RoomRole.host) context.l10n.homeRecentHost,
     ].join(' · ');
-    // A bare code is spelled out, like on the invite card (UX3-12).
+    // A bare code is spelled out, like on the invite card.
     final spokenCode = spokenRoomCode(room.code.display);
     // 0.1.6 had white @ 0.5; over the veil on a bright frame that is about
-    // 2:1. White @ 0.85 on the black @ 0.6 veil keeps 4.5:1 (F10).
+    // 2:1. White @ 0.85 on the black @ 0.6 veil keeps 4.5:1.
     final secondary = Colors.white.withValues(alpha: 0.85);
     final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
     return Row(

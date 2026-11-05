@@ -26,7 +26,7 @@ abstract class AppModule {
 
   /// Keychain items stay on this device (no backup or device transfer) and
   /// are readable after the first unlock, so a call that ends while the
-  /// screen is locked can still read owner tokens (SEC-14).
+  /// screen is locked can still read owner tokens.
   @lazySingleton
   FlutterSecureStorage get secureStorage => const FlutterSecureStorage(
     iOptions: IOSOptions(

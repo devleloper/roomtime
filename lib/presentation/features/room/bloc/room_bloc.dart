@@ -84,13 +84,13 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   /// Last snapshot with a live connection: the baseline for join/leave
   /// notices. Reconnecting and disconnected snapshots may list nobody (a
   /// full LiveKit restart clears the remote participants), so they are never
-  /// compared (CR-C1).
+  /// compared.
   CallSnapshot? _lastConnected;
   bool _leaving = false;
 
   /// "End for everyone" is in flight. The server deletes the media room
   /// before it answers, so LiveKit's disconnect usually arrives first and
-  /// must already read as "you ended it" (CR3-3).
+  /// must already read as "you ended it".
   bool _endingForAll = false;
   bool _cameraPausedInBackground = false;
 

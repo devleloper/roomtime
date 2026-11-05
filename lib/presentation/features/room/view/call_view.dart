@@ -249,7 +249,7 @@ class _CallViewState extends State<CallView> {
     }
   }
 
-  /// System Back: the same flow as the Leave button (UX3-03).
+  /// System Back: the same flow as the Leave button.
   void _onBack() {
     final state = _bloc.state;
     if (state is RoomInCall && _openOverlays == 0) _leave(state);
@@ -299,7 +299,7 @@ class _CallViewState extends State<CallView> {
       });
     }
     // Hiding may have become possible (someone joined, the connection is
-    // back): restart the idle timer, it does not re-arm itself (CR3-4).
+    // back): restart the idle timer, it does not re-arm itself.
     _scheduleHide();
   }
 
@@ -353,7 +353,7 @@ class _CallViewState extends State<CallView> {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              // 0.1.6 badge: safeTop + 16 (F12).
+              // 0.1.6 badge: safeTop + 16.
               padding: const EdgeInsets.fromLTRB(16, _topInset, 16, 0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -504,7 +504,7 @@ class _CallViewState extends State<CallView> {
           size: size,
           onPressed: _toggleCamera,
         ),
-        // Phones and tablets, mobile browsers included (UX3-11).
+        // Phones and tablets, mobile browsers included.
         if (isTouchPlatform)
           (size) => MediaControlButton(
             icon: Icons.cameraswitch,
@@ -601,7 +601,7 @@ class _CallViewState extends State<CallView> {
 /// A state line in the 0.1.6 HUD glass (blur 12, white @ 0.1 rim), with an
 /// optional text action. Announced when it appears. Tinted black @ 0.8 (the
 /// banner tint; 0.1.6: 0.5) and the action white, underlined: both keep
-/// 4.5:1 over a bright frame (F3).
+/// 4.5:1 over a bright frame.
 class _GlassNotice extends StatelessWidget {
   const _GlassNotice({
     required this.message,

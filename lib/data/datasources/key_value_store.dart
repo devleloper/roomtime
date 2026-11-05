@@ -24,8 +24,8 @@ abstract interface class KeyValueStore {
 /// `keychain-access-groups`, i.e. unsigned Debug) or a missing plugin. Every
 /// other error (e.g. a locked device) fails that one operation with
 /// `UnknownFailure(code: 'storage')` and the next call tries the platform
-/// again, so stored owner tokens are never hidden by a transient error
-/// (CR-C4), and callers that handle a [Failure] handle this too (CR3-7).
+/// again, so stored owner tokens are never hidden by a transient error,
+/// and callers that handle a [Failure] handle this too.
 @LazySingleton(as: KeyValueStore)
 class SecureKeyValueStore implements KeyValueStore {
   SecureKeyValueStore(this._storage);

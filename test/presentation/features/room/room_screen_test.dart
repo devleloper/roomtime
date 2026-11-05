@@ -159,7 +159,7 @@ void main() {
       await joinCall(tester);
 
       expect(find.text(l10n.roomWrongPassword), findsOneWidget);
-      // QA D4: the field is emptied, not selected, and Join waits for input.
+      // the field is emptied, not selected, and Join waits for input.
       expect(tester.widget<TextField>(passwordField).controller!.text, isEmpty);
       expect(tester.widget<GlassDialogButton>(joinButton()).onPressed, isNull);
       expect(rooms.joinPasswords, ['wrong']);
@@ -171,7 +171,7 @@ void main() {
       expect(find.byType(CallView), findsOneWidget);
     });
 
-    // QA D2: the password is sent exactly as typed, spaces included.
+    // the password is sent exactly as typed, spaces included.
     testWidgets('the lobby sends the password verbatim, not trimmed', (
       tester,
     ) async {
@@ -539,7 +539,7 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // CR3-5: a returning user (stored name) has the shortcuts at once.
+    // a returning user (stored name) has the shortcuts at once.
     testWidgets('lobby: Ctrl+E works with a prefilled name', (tester) async {
       await pumpRoom(tester, size: const Size(1200, 800));
       expect(preview.state.cameraEnabled, isTrue);
@@ -549,7 +549,7 @@ void main() {
       expect(preview.state.cameraEnabled, isFalse);
     }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
-    // CR3-1: while the preview releases the camera, nothing reopens it.
+    // while the preview releases the camera, nothing reopens it.
     testWidgets('lobby: device toggles are off from the Join tap on', (
       tester,
     ) async {
@@ -586,7 +586,7 @@ void main() {
       expect(find.text(l10n.roomPermAllow), findsNothing);
     });
 
-    // SEC-23: the room password is never offered to a password manager.
+    // the room password is never offered to a password manager.
     testWidgets('lobby: the password field has no autofill', (tester) async {
       rooms.lookupResult = sampleSummary(passwordRequired: true);
       await pumpRoom(tester);
@@ -597,7 +597,7 @@ void main() {
       expect(field.enableSuggestions, isFalse);
     });
 
-    // UX3-04: the live region is announced once, not every second.
+    // the live region is announced once, not every second.
     testWidgets('lobby: the lock-out live region does not tick', (
       tester,
     ) async {
@@ -630,7 +630,7 @@ void main() {
       semantics.dispose();
     });
 
-    // UX3-03: system Back.
+    // system Back.
     testWidgets('Back in the lobby goes Home', (tester) async {
       await pumpRoom(tester);
       await tester.binding.handlePopRoute();
@@ -689,7 +689,7 @@ void main() {
       expect(await left, isTrue);
     });
 
-    // CR3-4: the idle timer re-arms when hiding becomes possible.
+    // the idle timer re-arms when hiding becomes possible.
     testWidgets('controls hide after the first guest joins a long wait', (
       tester,
     ) async {
@@ -710,7 +710,7 @@ void main() {
       expect(control(l10n.roomLeave).hitTestable(), findsNothing);
     });
 
-    // UX3-01: never scaled below 48 dp, text never shrunk.
+    // never scaled below 48 dp, text never shrunk.
     for (final (size, scale) in [
       (const Size(600, 960), 2.0),
       (const Size(700, 900), 1.0),
@@ -777,7 +777,7 @@ void main() {
       semantics.dispose();
     });
 
-    // UX3-02: a microphone that failed at join is explained in the call.
+    // a microphone that failed at join is explained in the call.
     testWidgets('call: an unavailable microphone shows a banner with retry', (
       tester,
     ) async {
@@ -797,7 +797,7 @@ void main() {
       expect(session().microphoneCommands, [true]);
     });
 
-    // UX3-06: message and action say different things.
+    // message and action say different things.
     testWidgets('call: the autoplay banner has its own action label', (
       tester,
     ) async {
@@ -814,7 +814,7 @@ void main() {
       expect(session().startAudioCalls, 1);
     });
 
-    // UX3-08: Escape closes the participants dialog.
+    // Escape closes the participants dialog.
     testWidgets('call: Escape closes the participants dialog', (tester) async {
       await participantWithBob(tester, size: const Size(1280, 800));
       await tester.tap(control(l10n.roomParticipants));
@@ -827,7 +827,7 @@ void main() {
       expect(find.byType(ParticipantsPanel), findsNothing);
     });
 
-    // UX3-09 / UX3-14: semantics of the count, the mic and the network.
+    // semantics of the count, the mic and the network.
     testWidgets('call: participants count, mic state and weak connection are '
         'spoken', (tester) async {
       final semantics = tester.ensureSemantics();

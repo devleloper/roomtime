@@ -32,7 +32,7 @@ final class MediaRoomChanged extends MediaRoomEvent {
 
 /// Narrow seam over one LiveKit `Room`, so the session lifecycle (single
 /// teardown, leave during connect, remote disconnects) is testable without
-/// a media server (CR-C3). Data layer only; never crosses the domain port.
+/// a media server. Data layer only; never crosses the domain port.
 abstract interface class MediaRoomDriver {
   void listen(void Function(MediaRoomEvent event) onEvent);
 
@@ -40,7 +40,7 @@ abstract interface class MediaRoomDriver {
 
   /// Turns a device on (publishing it the first time) or off (mute). A track
   /// opened for publishing is stopped if publishing fails or the driver was
-  /// disposed meanwhile, so no device stays captured (CR-C2).
+  /// disposed meanwhile, so no device stays captured.
   Future<void> setMicrophoneEnabled(bool enabled);
 
   Future<void> setCameraEnabled(bool enabled);

@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:roomtime/l10n/app_localizations.dart';
 import 'package:roomtime/presentation/dialogs/glass_dialog.dart';
 
-// QA D5: a label never breaks inside a word; the row stacks instead.
+// a label never breaks inside a word; the row stacks instead.
 void main() {
   Future<void> pumpRow(
     WidgetTester tester,
