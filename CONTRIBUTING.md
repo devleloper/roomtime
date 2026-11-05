@@ -59,7 +59,7 @@ Signed-off-by: Your Name <you@example.com>
 ```
 
 - Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
-- Scopes in use: `client`, `ui`, `brand`, `l10n`, `ci`.
+- Scopes in use: `client`, `ui`, `brand`, `l10n`, `ci`, `repo`.
 - Breaking changes: `!` after the scope (`feat(client)!: …`) and a `BREAKING CHANGE:` footer.
 - One logical change per commit; formatting-only changes go in their own commit.
 
@@ -77,7 +77,7 @@ sign-off on every commit of a pull request. To fix a missing sign-off:
 
 ```bash
 git commit --amend -s --no-edit            # last commit
-git rebase --signoff origin/main           # every commit of the branch
+git rebase --signoff upstream/main         # every commit of the branch (upstream = devleloper/roomtime)
 git push --force-with-lease
 ```
 

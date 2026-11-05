@@ -4,11 +4,11 @@
 reference: the `lib/` of dev-0.1.6, commit `3b3c480`). Sections 1-11 describe the screens as built; §12-13 hold the
 accessibility checklist and open questions.
 
-Status: v1 · 2026-11-04 · Owner: ux-ui-designer
+Status: v1 · 2026-11-04 · Owner: maintainers
 Contract: [openapi.yaml](../api/openapi.yaml) (codes, links, passwords, errors); media E2EE is planned.
 Tokens and components: [tokens.md](tokens.md).
-Copy is a **proposal** in English and Russian: product-analyst decides wording, i18n-engineer moves it to ARB. Keys
-are suggestions for the ARB names.
+Copy is a **proposal** in English and Russian; the final strings live in the ARB files (`lib/l10n/`). Keys are
+suggestions for the ARB names.
 
 ## 0. Conventions
 
@@ -273,8 +273,8 @@ control shows the focus ring.
 
 ## 13. Open questions
 
-1. Listen-only join when the mic is denied (§4): proposal yes, joins muted. Owner: product-analyst.
-2. Recent rooms on Home: storage of codes locally and what "remove from recent" means. Owner: product-analyst.
+1. Listen-only join when the mic is denied (§4): proposal yes, joins muted. Owner: maintainers.
+2. Recent rooms on Home: storage of codes locally and what "remove from recent" means. Owner: maintainers.
 3. Product name: decided 2026-11-04, **RoomTime** (`appName`, the Home title).
 4. Font: decided 2026-11-04 (VIS-01): platform system font on native (SF Pro / Roboto, as 0.1.6), bundled Inter on
    web only (no fonts.gstatic.com). The Inter files still ship in native bundles (pubspec assets are shared) for the

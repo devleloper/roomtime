@@ -67,7 +67,7 @@ Future<void> pumpUntilGone(
   throw TestFailure('Timed out after $timeout waiting for $finder to go');
 }
 
-/// Matches a displayed room code such as `abc-defg-hjk` (ADR-0003 alphabet).
+/// Matches a displayed room code such as `abc-defg-hjk` (room code alphabet).
 final RegExp roomCodePattern = RegExp(
   r'^[a-hjkmnp-z]{3}-[a-hjkmnp-z]{4}-[a-hjkmnp-z]{3}$',
 );

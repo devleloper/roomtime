@@ -123,7 +123,8 @@ SDK. The camera preview is owned by the `MediaPreview` port and its adapter `Liv
 
 ## Trust and privacy
 
-- Passwords, invite codes and tokens never appear in URLs or logs; a password goes only in the join request body.
+- Passwords and owner tokens never appear in URLs or logs; the invite code appears only in the invite link path
+  (`/r/<code>`) and is never logged; a password goes only in the join request body.
 - The device keeps its own `guestId`, display name, recent rooms and owner tokens in secure storage
   (`KeyValueStore`, `OwnerTokenStore`).
 - Transport encryption only: the backend operator's SFU sees media in plain form. Optional media end-to-end

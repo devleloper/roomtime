@@ -263,9 +263,9 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   /// LiveKit reports "room deleted" both when the host ends the call and when
   /// the room expires; before `expiresAt` only the host can end it.
   ///
-  /// After `expiresAt` the server also removes anyone who fully reconnects
-  /// (ADR-0003 Amendment 1), and owner endpoints no longer work, so a
-  /// removal then means "expired", not "the host removed you" (A2-03).
+  /// After `expiresAt` the server also removes anyone who fully reconnects,
+  /// and owner endpoints no longer work, so a removal then means
+  /// "expired", not "the host removed you".
   CallEndReason _endReason(CallEndReason? reason) {
     if (reason == null) return CallEndReason.connectionLost;
     final expiresAt = _room?.expiresAt ?? _join?.room.expiresAt;

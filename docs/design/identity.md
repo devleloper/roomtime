@@ -1,6 +1,6 @@
 # RoomTime visual identity
 
-Status: v2 (RoomTime Blue, icon options) · 2026-11-04 · Owner: ux-ui-designer
+Status: v2 (RoomTime Blue, icon options) · 2026-11-04 · Owner: maintainers
 Code: `lib/presentation/theme/` (palette, schemes, typography), `lib/presentation/widgets/room_time_logo.dart`.
 Assets: `assets/brand/` (masters in `src/`, rasters in `icon/`, `splash/`, `logo/`, build script in `tool/`).
 Token tables and every contrast pair of the UI: [tokens.md](tokens.md).
@@ -19,7 +19,7 @@ Token tables and every contrast pair of the UI: [tokens.md](tokens.md).
 | Tagline EN (proposal) | Open a room. Share the link. Talk. |
 | Tagline RU (proposal) | Откройте комнату. Поделитесь ссылкой. Говорите. |
 
-Copy lines are proposals; `product-analyst` decides wording, `i18n-engineer` moves any in-app string into ARB. The
+Copy lines are proposals; in-app strings live in the ARB files (`lib/l10n/`). The
 name itself is a proper noun and is not translated (`RoomTime` in Russian UI too).
 
 Audience: families, friends and small teams. The identity is warm but not domestic: no houses, hearts, people
@@ -96,7 +96,7 @@ Wordmark ink: Ink `#001D2F` on light, White on dark; never blue.
 - Rotate, mirror (also in RTL), skew or re-proportion; close the gap between leaf and swing, or turn the swing into a full or half circle.
 - Put the blue mark on mid-tone or busy backgrounds: use the reversed mark on a scrim.
 - Set the wordmark in live text, another font or weight; split "Room Time".
-- Use the old `logo.png` (removed: unknown origin).
+- Use the former FamilyCalls `logo.png` (retired with the rename).
 
 ## 3. Color
 
@@ -261,11 +261,11 @@ one semantics node (`image`, label "RoomTime").
 
 | Asset | Source | License | Status |
 | --- | --- | --- | --- |
-| RoomTime marks A, B, C (`src/marks/roomtime-mark-{a,b,c}.svg`) and every derived SVG/PNG in `assets/brand/` and `docs/design/img/` | Original work, ux-ui-designer, 2026-11-04 | Project-owned | known |
+| RoomTime marks A, B, C (`src/marks/roomtime-mark-{a,b,c}.svg`) and every derived SVG/PNG in `assets/brand/` and `docs/design/img/` | Original work, RoomTime project, 2026-11-04 | Project-owned | known |
 | Wordmark outlines | Inter 4.1 glyphs converted to outlines | SIL OFL 1.1 (artwork made with the font is not Font Software) | known |
 | Inter 4.1 variable fonts | rsms/inter, bundled in `assets/fonts/inter/` | SIL OFL 1.1 (`OFL.txt`) | known |
 | Build tools `assets/brand/tool/*` | Original, project | Project-owned | known |
-| Former `assets/brand/logo.png` | unknown | unknown | removed |
+| Former `assets/brand/logo.png` (FamilyCalls) | Original work of the author | Project-owned | retired with the rename |
 
 `assets/brand/` subfolders are not bundled into the app (`pubspec` lists only the top-level `assets/brand/`,
 which is now empty); nothing in the app needs a brand bitmap.

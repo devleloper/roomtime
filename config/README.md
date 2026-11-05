@@ -24,11 +24,11 @@ Native settings that cannot come from Dart defines:
   (`calls.example.com`) until the public domain is chosen.
 
 Invite links are not configured on the client: the API returns `inviteUrl`
-(built from the server's `PUBLIC_BASE_URL`) with create, lookup, join and
+(built from the backend's public base URL) with create, lookup, join and
 rotate-code, and the app shows and shares it as is.
 
 Release builds accept only `wss://` LiveKit URLs from the join response;
-`ws://` works in debug and profile builds for the local stack.
+`ws://` works in debug and profile builds for a local backend.
 
 macOS: the Release configuration stores the guest id and owner tokens in the
 data-protection keychain (`keychain-access-groups` in

@@ -82,10 +82,10 @@ The same checks run in CI on every pull request:
 
 ```bash
 dart run build_runner build --delete-conflicting-outputs   # generated DI code must be up to date
-dart format --set-exit-if-changed lib test integration_test
+dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test
-flutter build web --release --no-web-resources-cdn
+flutter build web --release --no-web-resources-cdn --dart-define-from-file=config/local.example.json
 ```
 
 Integration tests run the real app against a backend: [integration_test/README.md](integration_test/README.md).

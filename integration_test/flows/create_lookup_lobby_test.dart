@@ -1,4 +1,4 @@
-// Create -> lookup -> lobby against the live local stack (no mocks).
+// Create -> lookup -> lobby against a running backend (no mocks).
 //
 // flutter test integration_test/flows/create_lookup_lobby_test.dart \
 //   -d <device> --dart-define-from-file=config/local.example.json
@@ -114,7 +114,7 @@ void main() {
     await tester.tap(find.text(l10nOf(tester).homeJoin));
     await pumpUntilFound(tester, find.text(l10nOf(tester).roomJoin));
 
-    // Assert: password field shown, the name stays hidden (ADR-0003).
+    // Assert: password field shown, the name stays hidden.
     expect(
       find.widgetWithText(TextField, l10nOf(tester).roomPasswordLabel),
       findsOneWidget,

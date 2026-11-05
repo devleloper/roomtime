@@ -274,7 +274,7 @@ void main() {
       expect(rooms.createdWith?.password, '  Pa ss  ');
     });
 
-    // UX3-07 / SEC-24: no E2EE control until ADR-0004 ships.
+    // No E2EE control until media E2EE ships.
     testWidgets('the dialog asks only for a name and a password', (
       tester,
     ) async {

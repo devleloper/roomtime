@@ -1,6 +1,6 @@
 # Design tokens
 
-Status: v1 · 2026-11-04 · Owner: ux-ui-designer
+Status: v1 · 2026-11-04 · Owner: maintainers
 Source of truth for the look: the original dev-0.1.6 screens and widgets (dev-0.1.6 sources at `3b3c480`,
 [flows.md §14](flows.md#14-dev-016-look-source-of-truth)). Tokens below name the values those widgets use.
 Brand identity, logo and icon rules: [identity.md](identity.md).
@@ -283,7 +283,7 @@ Preview: `img/original-widgets.png` (`original_widgets_preview_test.dart`, `ORIG
 - RoomTime logo, app icons, splash and favicons: original work for this project (2026), built from
   `assets/brand/src/roomtime-mark.svg`; the wordmark is Inter Bold converted to outlines (artwork made with an
   OFL font is not subject to the OFL). Details: [identity.md](identity.md#assets-and-licenses).
-- The previous `assets/brand/logo.png` (unknown origin) is removed.
+- The former FamilyCalls `assets/brand/logo.png` (the author's own work) was retired with the rename.
 - Icons: Material Icons font (Apache-2.0, bundled by `uses-material-design: true`).
 - `assets/sounds/*.m4a`: original join/leave chimes synthesised by `assets/sounds/tool/make_sounds.py`
   (AGPL-3.0-only, see NOTICE).

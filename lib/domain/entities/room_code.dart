@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-/// A room invitation code (ADR-0003): 10 letters from [alphabet], shown as
+/// A room invitation code (room API v1): 10 letters from [alphabet], shown as
 /// `abc-defg-hjk`. Instances are always normalized and valid.
 final class RoomCode extends Equatable {
   const RoomCode._(this.value);

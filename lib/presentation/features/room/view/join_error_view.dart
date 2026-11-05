@@ -17,7 +17,7 @@ bool isFullScreenJoinFailure(Failure failure) => switch (failure) {
 };
 
 /// Full-screen join or lookup error. Invalid, expired, ended and revoked
-/// codes share one "Room not found" message on purpose (ADR-0003).
+/// codes share one "Room not found" message on purpose (the API does not reveal which).
 class JoinErrorView extends StatelessWidget {
   const JoinErrorView({
     super.key,

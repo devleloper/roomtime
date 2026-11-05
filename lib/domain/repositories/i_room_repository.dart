@@ -2,7 +2,7 @@ import '../entities/guest_profile.dart';
 import '../entities/room.dart';
 import '../entities/room_code.dart';
 
-/// Room API (ADR-0003). Every method throws a `Failure` on error.
+/// Room API v1 (docs/api/openapi.yaml). Every method throws a `Failure` on error.
 ///
 /// Owner tokens are kept by the implementation (secure storage, per roomId)
 /// and sent automatically as `Authorization: Bearer` on join and owner calls.

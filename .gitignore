@@ -60,8 +60,6 @@ key.properties
 .env
 .env.*
 
-# Local tool state
-.qa-artifacts/
-.claude/
-CLAUDE.md
-CLAUDE.local.md
+# Firebase config (not used; never commit it)
+google-services.json
+GoogleService-Info.plist

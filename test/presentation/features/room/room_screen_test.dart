@@ -519,8 +519,8 @@ void main() {
     });
   });
 
-  // Gate 3 findings (review3): each test fails without its fix.
-  group('gate 3 regressions', () {
+  // Review regressions: each test fails without its fix.
+  group('review regressions', () {
     Future<void> chord(WidgetTester tester, LogicalKeyboardKey key) async {
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
       await tester.sendKeyEvent(key);

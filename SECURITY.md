@@ -38,7 +38,7 @@ In scope:
 
 - This Flutter app: storage of the guest id and owner tokens, handling of invite links and deep links, what is sent
   to the backend, logging, platform permissions and configuration.
-- The release workflow and the published web bundle.
+- The release workflow and the web bundle it builds.
 
 Problems in the RoomTime backend (room API, LiveKit configuration) can be reported the same way; the backend is
 maintained separately.

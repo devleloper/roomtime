@@ -27,7 +27,7 @@ import '../../../../l10n/l10n.dart';
 typedef DeviceChoice = ({bool camera, bool microphone});
 
 /// Pre-join (flows.md §4): preview, devices, name and password. The password
-/// lives here because only the join request can verify it (ADR-0003).
+/// lives here because only the join request can verify it.
 /// Expects a [LobbyCubit] and a [RoomBloc] above it.
 class LobbyView extends StatelessWidget {
   const LobbyView({

@@ -121,7 +121,7 @@ void main() {
       );
     });
 
-    test('debug: ws allowed for the local stack', () {
+    test('debug: ws allowed for a local backend', () {
       expect(
         mediaUrl('ws://localhost:7880', requireSecure: false),
         'ws://localhost:7880',

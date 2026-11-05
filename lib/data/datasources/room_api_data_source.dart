@@ -11,7 +11,7 @@ import '../../domain/failures/failure.dart';
 import '../models/room_dtos.dart';
 import 'api_failure_mapper.dart';
 
-/// HTTP client for `/v1/rooms` (ADR-0003). Throws only [Failure].
+/// HTTP client for `/v1/rooms` (room API v1, docs/api/openapi.yaml). Throws only [Failure].
 @lazySingleton
 class RoomApiDataSource {
   RoomApiDataSource(this._dio);

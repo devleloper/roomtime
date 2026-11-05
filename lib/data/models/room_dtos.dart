@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/entities/room.dart';
 import '../../domain/entities/room_code.dart';
 
-// Wire DTOs for ADR-0003 (`/v1/rooms`). Parsing is strict and follows
+// Wire DTOs for the room API v1 (`/v1/rooms`, docs/api/openapi.yaml). Parsing is strict and follows
 // docs/api/openapi.yaml: a missing or mistyped required field throws
 // [FormatException], which the data source maps to `UnknownFailure`.
 
