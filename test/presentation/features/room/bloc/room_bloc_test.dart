@@ -49,7 +49,6 @@ void main() {
     call: FakeCallSession.connectedSnapshot,
   );
 
-  /// Lets queued events and microtasks run.
   Future<void> settle() => Future<void>.delayed(Duration.zero);
 
   group('connect', () {
@@ -242,8 +241,6 @@ void main() {
       expect: () => [RoomEnded(CallEndReason.roomDeleted, code: testCode)],
     );
 
-    // after expiresAt the server removes full reconnects; that is
-    // the room expiring, not the host removing you.
     blocTest<RoomBloc, RoomState>(
       'removed after expiry -> Ended(roomDeleted)',
       build: build,
@@ -396,7 +393,6 @@ void main() {
       await bloc.close();
     });
 
-    // only connected -> connected snapshots are compared.
     test(
       'no leave effects when the call ends (disconnected, empty list)',
       () async {
@@ -544,6 +540,32 @@ void main() {
       },
     );
 
+    test(
+      'a failed invite rotation emits RoomActionFailedEffect and keeps the current code',
+      () async {
+        final bloc = hostBloc()..add(join());
+        final effects = <RoomEffect>[];
+        final subscription = bloc.effects.listen(effects.add);
+        await settle();
+        rooms.hostError = const ServerFailure(statusCode: 503);
+
+        bloc.add(const RoomInviteRotateRequested());
+        await settle();
+
+        final state = bloc.state as RoomInCall;
+        expect(state.room.code, testCode);
+        expect(effects, [
+          isA<RoomActionFailedEffect>().having(
+            (e) => e.failure,
+            'failure',
+            const ServerFailure(statusCode: 503),
+          ),
+        ]);
+        await subscription.cancel();
+        await bloc.close();
+      },
+    );
+
     test('a participant cannot change room settings', () async {
       final bloc = build()..add(join());
       await settle();
@@ -555,7 +577,6 @@ void main() {
       await bloc.close();
     });
 
-    // the host is warned before the invitation expires.
     test('host is warned 10 minutes before expiresAt', () async {
       final bloc = hostBloc(
         expiresAt: clock.current.add(const Duration(minutes: 5)),
@@ -575,7 +596,6 @@ void main() {
       await bloc.close();
     });
 
-    // the delayed branch, on the test binding's fake clock.
     testWidgets('the warning fires once the lead time is reached', (
       tester,
     ) async {
@@ -590,11 +610,9 @@ void main() {
 
       await tester.pump(const Duration(seconds: 1));
       expect((bloc.state as RoomInCall).expiresSoon, isTrue);
-      // Closing awaits real stream teardown, outside the fake clock.
       await tester.runAsync(bloc.close);
     });
 
-    // the server deletes the media room before it answers 204.
     test('End for everyone: a disconnect before the 204 gives exactly one '
         'Ended(endedByYou)', () async {
       final bloc = hostBloc()..add(join());
@@ -623,7 +641,6 @@ void main() {
       await bloc.close();
     });
 
-    // CR4-2: only a room-ended disconnect reads as "you ended it".
     test('End for everyone: a lost connection while the request fails stays '
         'connectionLost', () async {
       final bloc = hostBloc()..add(join());
@@ -667,7 +684,6 @@ void main() {
       await bloc.close();
     });
 
-    // failed host actions report exactly once, the state stays.
     for (final (name, event) in [
       (
         'mute',
@@ -726,5 +742,13 @@ void main() {
       expect(session.startAudioCalls, 1);
       await bloc.close();
     });
+  });
+
+  test('password events do not print the password', () {
+    expect(join(password: 'hunter22').toString(), isNot(contains('hunter22')));
+    expect(
+      const RoomPasswordChangeRequested('hunter22').toString(),
+      isNot(contains('hunter22')),
+    );
   });
 }

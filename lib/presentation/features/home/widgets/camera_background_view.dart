@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
+import 'package:roomtime/presentation/widgets/participant_video.dart';
 
-import '../../../../l10n/l10n.dart';
-import '../../../shared/participant_video.dart';
-import '../../../theme/theme.dart';
-
-/// Full-bleed front camera behind Home (dev-0.1.6): black until a track is
-/// given, then a 500 ms crossfade to the live feed. The screen owns the
-/// camera (`MediaPreview`); this only draws it.
 class CameraBackgroundView extends StatelessWidget {
-  const CameraBackgroundView({super.key, required this.videoTrack});
-
-  /// Opaque video handle (`MediaPreviewState.videoTrack`); null is black.
   final Object? videoTrack;
+
+  const CameraBackgroundView({super.key, required this.videoTrack});
 
   @override
   Widget build(BuildContext context) {

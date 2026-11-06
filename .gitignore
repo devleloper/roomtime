@@ -63,3 +63,6 @@ key.properties
 # Firebase config (not used; never commit it)
 google-services.json
 GoogleService-Info.plist
+
+# Local read-only style reference (never committed)
+/reference/

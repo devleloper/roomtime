@@ -1,52 +1,21 @@
 part of 'home_bloc.dart';
 
-sealed class HomeEvent {
-  const HomeEvent();
-}
+@freezed
+sealed class HomeEvent with _$HomeEvent {
+  const factory HomeEvent.started() = HomeStarted;
 
-/// Loads the recent rooms and the display name stored on this device.
-final class HomeStarted extends HomeEvent {
-  const HomeStarted();
-}
+  const factory HomeEvent.joinSubmitted(String input) = HomeJoinSubmitted;
 
-/// The join field was submitted: a code in any spelling or an invite link.
-final class HomeJoinSubmitted extends HomeEvent {
-  const HomeJoinSubmitted(this.input);
+  const factory HomeEvent.joinInputChanged() = HomeJoinInputChanged;
 
-  final String input;
-}
+  const factory HomeEvent.recentRoomRemoved(RoomCode code) =
+      HomeRecentRoomRemoved;
 
-/// Clears the join error once the user edits the field.
-final class HomeJoinInputChanged extends HomeEvent {
-  const HomeJoinInputChanged();
-}
+  const factory HomeEvent.recentRoomRestored(RecentRoom room) =
+      HomeRecentRoomRestored;
 
-final class HomeRecentRoomRemoved extends HomeEvent {
-  const HomeRecentRoomRemoved(this.code);
+  const factory HomeEvent.createFormOpened() = HomeCreateFormOpened;
 
-  final RoomCode code;
-}
-
-/// "Undo" after [HomeRecentRoomRemoved]: puts the entry back in its place.
-final class HomeRecentRoomRestored extends HomeEvent {
-  const HomeRecentRoomRestored(this.room);
-
-  final RecentRoom room;
-}
-
-final class HomeDisplayNameSaved extends HomeEvent {
-  const HomeDisplayNameSaved(this.name);
-
-  final String name;
-}
-
-/// The create sheet opened: forget the previous result.
-final class HomeCreateFormOpened extends HomeEvent {
-  const HomeCreateFormOpened();
-}
-
-final class HomeCreateRoomRequested extends HomeEvent {
-  const HomeCreateRoomRequested(this.params);
-
-  final CreateRoomParams params;
+  const factory HomeEvent.createRoomRequested(CreateRoomParams params) =
+      HomeCreateRoomRequested;
 }

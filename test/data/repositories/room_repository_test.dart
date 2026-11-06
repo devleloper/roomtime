@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:roomtime/data/datasources/owner_token_store.dart';
-import 'package:roomtime/data/datasources/room_api_data_source.dart';
+import 'package:roomtime/data/local/owner_token_store.dart';
+import 'package:roomtime/data/network/room_api_data_source.dart';
 import 'package:roomtime/data/repositories/recent_rooms_repository.dart';
 import 'package:roomtime/data/repositories/room_repository.dart';
 import 'package:roomtime/domain/entities/guest_profile.dart';
@@ -49,8 +49,8 @@ Map<String, Object?> joinJson({String role = 'participant'}) => {
 void main() {
   late FakeHttpAdapter http;
   late InMemoryKeyValueStore store;
-  late RecentRoomsRepository recents;
-  late RoomRepository repository;
+  late LocalRecentRoomsRepository recents;
+  late ApiRoomRepository repository;
   late FakeResponse Function(String method, String path) respond;
   final clock = FixedClock(DateTime.utc(2026, 11, 3, 12));
 
@@ -58,8 +58,8 @@ void main() {
     respond = (_, _) => const FakeResponse(500);
     http = FakeHttpAdapter((r) => respond(r.method, r.uri.path));
     store = InMemoryKeyValueStore();
-    recents = RecentRoomsRepository(store);
-    repository = RoomRepository(
+    recents = LocalRecentRoomsRepository(store);
+    repository = ApiRoomRepository(
       RoomApiDataSource(fakeDio(http)),
       OwnerTokenStore(store),
       recents,
@@ -165,8 +165,6 @@ void main() {
     });
   });
 
-  // passwords reach the wire exactly as typed (no trim, no case or
-  // Unicode normalization).
   test('create and join send the password verbatim', () async {
     const typed = ' Pa\u00A0ss\tÄ ';
     respond = (method, path) => switch (path) {
@@ -390,7 +388,7 @@ void main() {
     });
 
     test('a connection error is a NetworkFailure', () async {
-      final offline = RoomRepository(
+      final offline = ApiRoomRepository(
         RoomApiDataSource(
           fakeDio(
             FakeHttpAdapter(

@@ -56,7 +56,6 @@ void main() {
     );
   });
 
-  // /rtc/validate turns a 5xx from the edge into NotAllowed.
   test('a 5xx from the media edge -> ServerFailure, not media_refused', () {
     expect(
       LiveKitCallSession.connectFailure(refused('<html>502', 502)),

@@ -1,15 +1,8 @@
-// Launch and finder helpers for integration tests that run the real app
-// against a running RoomTime backend (no mocks).
-//
-// Build with `--dart-define-from-file=config/local.example.json`; on Android
-// run `adb reverse tcp:8080 tcp:8080` first so the emulator reaches
-// localhost:8080.
-
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:roomtime/app/app_router.dart';
 import 'package:roomtime/core/di/injection.dart';
+import 'package:roomtime/core/router/app_router.dart';
 import 'package:roomtime/l10n/app_localizations.dart';
 import 'package:roomtime/main.dart';
 import 'package:flutter/material.dart';
@@ -17,15 +10,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 bool _dependenciesReady = false;
 
-/// Starts the app on Home. DI is configured once per test process; the
-/// router is reset to `/` so every test starts from the same screen.
 Future<void> launchApp(WidgetTester tester) async {
   if (!_dependenciesReady) {
     configureDependencies();
     _dependenciesReady = true;
   }
-  // Unmount the previous app so open sheets and routes do not leak between
-  // tests, then start again on Home.
   await tester.pumpWidget(const SizedBox.shrink());
   appRouter.go('/');
   await tester.pumpWidget(const RoomTimeApp());
@@ -33,13 +22,9 @@ Future<void> launchApp(WidgetTester tester) async {
   await pumpUntilFound(tester, find.text(l10nOf(tester).homeCreateRoom));
 }
 
-/// Strings in the device language: finders never hard-code English, so the
-/// suite runs on simulators set to any shipped locale (en, ru).
 AppLocalizations l10nOf(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byType(Scaffold).first));
 
-/// Pumps frames until [finder] matches or [timeout] passes. Network calls to
-/// the live stack make `pumpAndSettle` unsuitable (spinners never settle).
 Future<void> pumpUntilFound(
   WidgetTester tester,
   Finder finder, {
@@ -53,7 +38,6 @@ Future<void> pumpUntilFound(
   throw TestFailure('Timed out after $timeout waiting for $finder');
 }
 
-/// Pumps frames until [finder] no longer matches or [timeout] passes.
 Future<void> pumpUntilGone(
   WidgetTester tester,
   Finder finder, {
@@ -67,12 +51,30 @@ Future<void> pumpUntilGone(
   throw TestFailure('Timed out after $timeout waiting for $finder to go');
 }
 
-/// Matches a displayed room code such as `abc-defg-hjk` (room code alphabet).
+/// Taps [finder] once its centre hit-tests to it: dialogs, sheets and the
+/// on-screen keyboard animate, so a tap right after they appear can land on
+/// the widget underneath.
+Future<void> tapWhenHittable(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final hittable = finder.hitTestable();
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    if (hittable.evaluate().isNotEmpty) {
+      await tester.tap(hittable.first);
+      return;
+    }
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  throw TestFailure('Timed out after $timeout waiting to tap $finder');
+}
+
 final RegExp roomCodePattern = RegExp(
   r'^[a-hjkmnp-z]{3}-[a-hjkmnp-z]{4}-[a-hjkmnp-z]{3}$',
 );
 
-/// The room code shown on the host's "Your room is ready" card.
 String readShownRoomCode(WidgetTester tester) {
   final codes = tester
       .widgetList<SelectableText>(find.byType(SelectableText))
@@ -85,21 +87,17 @@ String readShownRoomCode(WidgetTester tester) {
   return codes.single;
 }
 
-/// No raw exception or stack text is visible.
 void expectNoRawErrors() {
   for (final pattern in ['Exception', 'Error:', 'DioException', '#0 ']) {
     expect(find.textContaining(pattern), findsNothing, reason: pattern);
   }
 }
 
-/// API origin the app was built with (`config/local.example.json`).
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://localhost:8080',
 );
 
-/// Creates a room as an independent client (plain HTTP, no app code) and
-/// returns its code, so the app under test is a guest, not the host.
 Future<String> createRoomViaApi({String? name, String? password}) async {
   final client = HttpClient();
   try {

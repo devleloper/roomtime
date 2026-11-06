@@ -2,7 +2,7 @@ import 'package:roomtime/domain/entities/call_snapshot.dart';
 import 'package:roomtime/domain/failures/failure.dart';
 import 'package:roomtime/presentation/features/room/view/ended_view.dart';
 import 'package:roomtime/presentation/features/room/view/join_error_view.dart';
-import 'package:roomtime/presentation/theme/theme.dart';
+import 'package:roomtime/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:roomtime/l10n/app_localizations.dart';
@@ -50,7 +50,6 @@ void main() {
     onNewRoom: () => taps.add('new'),
   );
 
-  // reason -> (title, buttons shown)
   final cases = <(CallEndReason, bool), (String, List<String>)>{
     (CallEndReason.left, false): (
       l10n.roomEndedLeft,

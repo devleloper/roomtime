@@ -1,26 +1,30 @@
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-/// Local guest identity. [guestId] is a random UUID created once per install;
-/// it is sent only in join requests and never shown.
-final class GuestProfile extends Equatable {
-  const GuestProfile({required this.guestId, required this.displayName});
+part 'guest_profile.freezed.dart';
+part 'guest_profile.g.dart';
 
+@freezed
+abstract class GuestProfile with _$GuestProfile {
   static const maxDisplayNameLength = 32;
-
-  /// Used until the user picks a name (the lobby asks for one).
   static const defaultDisplayName = 'Guest';
 
-  final String guestId;
+  const GuestProfile._();
 
-  /// Empty until the user sets a name.
-  final String displayName;
+  const factory GuestProfile({
+    required String guestId,
+    required String displayName,
+  }) = _GuestProfile;
 
-  /// [displayName] or [defaultDisplayName], ready for a join request.
-  String get effectiveDisplayName =>
-      displayName.isEmpty ? defaultDisplayName : displayName;
+  factory GuestProfile.fromJson(Map<String, dynamic> json) =>
+      _$GuestProfileFromJson(json);
 
-  /// Trims [input]; returns it when 1..[maxDisplayNameLength] characters long,
-  /// otherwise `null`.
+  String get effectiveDisplayName {
+    if (displayName.isEmpty) {
+      return defaultDisplayName;
+    }
+    return displayName;
+  }
+
   static String? normalizeDisplayName(String input) {
     final trimmed = input.trim();
     if (trimmed.isEmpty || trimmed.runes.length > maxDisplayNameLength) {
@@ -28,12 +32,4 @@ final class GuestProfile extends Equatable {
     }
     return trimmed;
   }
-
-  GuestProfile copyWith({String? displayName}) => GuestProfile(
-    guestId: guestId,
-    displayName: displayName ?? this.displayName,
-  );
-
-  @override
-  List<Object?> get props => [guestId, displayName];
 }

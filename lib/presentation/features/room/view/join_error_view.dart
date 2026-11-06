@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:roomtime/domain/failures/failure.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/widgets/glass_button.dart';
+import 'package:roomtime/presentation/widgets/glass_dialog.dart';
 
-import '../../../../domain/failures/failure.dart';
-import '../../../utils/failure_message.dart';
-import '../../../dialogs/glass_dialog.dart';
-import '../../../../l10n/l10n.dart';
+bool isFullScreenJoinFailure(Failure failure) {
+  return switch (failure) {
+    RoomNotFoundFailure() ||
+    InvalidCodeFailure() ||
+    RoomFullFailure() ||
+    RoomLockedFailure() ||
+    ParticipantBannedFailure() => true,
+    _ => false,
+  };
+}
 
-/// Whether [failure] blocks the lobby and gets a full screen (flows.md §10);
-/// the others show inline on the lobby form.
-bool isFullScreenJoinFailure(Failure failure) => switch (failure) {
-  RoomNotFoundFailure() ||
-  InvalidCodeFailure() ||
-  RoomFullFailure() ||
-  RoomLockedFailure() ||
-  ParticipantBannedFailure() => true,
-  _ => false,
-};
-
-/// Full-screen join or lookup error. Invalid, expired, ended and revoked
-/// codes share one "Room not found" message on purpose (the API does not reveal which).
 class JoinErrorView extends StatelessWidget {
+  final Failure failure;
+  final VoidCallback onHome;
+
+  final VoidCallback? onRetry;
+  final int? maxParticipants;
+
   const JoinErrorView({
     super.key,
     required this.failure,
@@ -27,35 +30,26 @@ class JoinErrorView extends StatelessWidget {
     this.maxParticipants,
   });
 
-  final Failure failure;
-  final VoidCallback onHome;
-
-  /// "Try again" (full, locked, network); null hides it.
-  final VoidCallback? onRetry;
-  final int? maxParticipants;
-
   @override
   Widget build(BuildContext context) {
-    // Not found and banned have no retry.
-    final onRetry =
-        failure is RoomNotFoundFailure ||
-            failure is InvalidCodeFailure ||
-            failure is ParticipantBannedFailure
-        ? null
-        : this.onRetry;
+    final canRetry =
+        failure is! RoomNotFoundFailure &&
+        failure is! InvalidCodeFailure &&
+        failure is! ParticipantBannedFailure;
+    final retryCallback = canRetry ? onRetry : null;
     final home = GlassDialogButton(
       label: context.l10n.roomHome,
       onPressed: onHome,
-      style: onRetry == null
+      style: retryCallback == null
           ? GlassButtonStyle.primary
           : GlassButtonStyle.secondary,
-      autofocus: onRetry == null,
+      autofocus: retryCallback == null,
     );
-    final retry = onRetry == null
+    final retry = retryCallback == null
         ? null
         : GlassDialogButton(
             label: context.l10n.roomTryAgain,
-            onPressed: onRetry,
+            onPressed: retryCallback,
             style: GlassButtonStyle.primary,
             autofocus: true,
           );

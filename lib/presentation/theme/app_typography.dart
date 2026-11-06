@@ -1,35 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// RoomTime type scale.
-///
-/// Font (dev-0.1.6 fidelity, VIS-01):
-/// - native (iOS, macOS, Android, desktop): the platform system font, as in
-///   0.1.6 (SF Pro on Apple, Roboto on Android). [fontFamily] is `null`, so
-///   `ThemeData`'s platform [Typography] supplies the family;
-/// - web: the bundled Inter (SIL OFL 1.1), served from the app's own
-///   assets: no fonts.gstatic.com request (privacy, CSP `font-src 'self'`).
-///
-/// Sizes, line heights and weights are the same on every platform: the M3
-/// scale, with the 0.1.6 hero titles (34 / 28 bold) and semibold titles and
-/// labels. Tracking differs: system fonts carry their own optical tracking,
-/// so native text keeps only the 0.1.6 tracking (-0.5 on hero titles);
-/// Inter on web gets its dynamic tracking
-/// (`-0.0223 + 0.185 * e^(-0.1745 * size)` em), which tightens large text.
-/// Colors come from the theme's [ColorScheme], never from these styles.
-/// Table and rationale: `docs/design/tokens.md#typography`.
 abstract final class AppTypography {
-  /// The bundled web font and the RoomTime wordmark (brand artwork).
   static const String webFontFamily = 'Inter';
 
-  /// `null` on native (platform system font), [webFontFamily] on web.
   static const String? fontFamily = kIsWeb ? webFontFamily : null;
 
-  /// The type scale for the current platform.
   static final TextTheme textTheme = textThemeFor(web: kIsWeb);
 
-  /// The type scale for web (Inter) or native (system font); visible for
-  /// tests of the other platform.
   static TextTheme textThemeFor({required bool web}) {
     TextStyle style(
       double size,
@@ -52,8 +30,6 @@ abstract final class AppTypography {
       displayLarge: style(57, 64, FontWeight.w700, -1.25),
       displayMedium: style(45, 52, FontWeight.w700, -1),
       displaySmall: style(36, 44, FontWeight.w700, -0.8),
-      // Hero titles of the FaceTime-style screens (0.1.6: 34 / 28 bold,
-      // tracking -0.5): phone home title and sidebar title.
       headlineLarge: style(34, 41, FontWeight.w700, -0.5, systemTracking: -0.5),
       headlineMedium: style(
         28,

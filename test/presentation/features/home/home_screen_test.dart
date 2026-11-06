@@ -9,11 +9,12 @@ import 'package:roomtime/domain/failures/failure.dart';
 import 'package:roomtime/domain/services/media_preview.dart';
 import 'package:roomtime/presentation/features/home/bloc/home_bloc.dart';
 import 'package:roomtime/presentation/features/home/view/home_screen.dart';
-import 'package:roomtime/presentation/dialogs/glass_dialog.dart';
-import 'package:roomtime/presentation/features/home/view/layouts/home_desktop_layout.dart';
-import 'package:roomtime/presentation/features/home/view/layouts/home_mobile_layout.dart';
-import 'package:roomtime/presentation/invite/invite_panel.dart';
-import 'package:roomtime/presentation/widgets/widgets.dart';
+import 'package:roomtime/presentation/features/home/widgets/home_desktop_layout.dart';
+import 'package:roomtime/presentation/features/home/widgets/home_mobile_layout.dart';
+import 'package:roomtime/presentation/widgets/custom_text_field.dart';
+import 'package:roomtime/presentation/widgets/glass_button.dart';
+import 'package:roomtime/presentation/widgets/glass_surface.dart';
+import 'package:roomtime/presentation/widgets/invite_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,7 +26,6 @@ import 'package:roomtime/l10n/app_localizations.dart';
 
 final l10n = lookupAppLocalizations(const Locale('en'));
 
-/// A store whose platform fails every operation.
 class FailingStore extends InMemoryKeyValueStore {
   bool failing = false;
 
@@ -70,11 +70,9 @@ void main() {
       GoRoute(
         path: '/',
         builder: (context, state) => BlocProvider(
-          create: (_) => HomeBloc(
-            RecentRoomsRepository(store),
-            rooms,
-            FakeGuestProfileRepository(),
-          )..add(const HomeStarted()),
+          create: (_) =>
+              HomeBloc(LocalRecentRoomsRepository(store), rooms)
+                ..add(const HomeStarted()),
           child: HomeScreen(
             createPreview: preview == null ? null : () => preview,
           ),
@@ -168,7 +166,6 @@ void main() {
       expect(find.text('at /r/abcdefghjk'), findsOneWidget);
     });
 
-    // the keyboard Go / Enter action joins, like the Join button.
     testWidgets('the keyboard Go action joins', (tester) async {
       await pumpHome(tester);
 
@@ -218,7 +215,6 @@ void main() {
       expect(rooms.createCalls, 1);
       expect(rooms.createdWith?.name, 'Family');
       expect(rooms.createdWith?.password, isNull);
-      // A5-04: limits are left to the server defaults.
       expect(rooms.createdWith?.lifetimeMinutes, isNull);
       expect(rooms.createdWith?.maxParticipants, isNull);
       expect(find.text(l10n.inviteReady), findsOneWidget);
@@ -257,7 +253,6 @@ void main() {
       expect(rooms.createCalls, 0);
     });
 
-    // the password is sent exactly as typed, spaces included.
     testWidgets('the room password is sent verbatim, not trimmed', (
       tester,
     ) async {
@@ -274,7 +269,6 @@ void main() {
       expect(rooms.createdWith?.password, '  Pa ss  ');
     });
 
-    // No E2EE control until media E2EE ships.
     testWidgets('the dialog asks only for a name and a password', (
       tester,
     ) async {
@@ -317,7 +311,7 @@ void main() {
 
   group('recent rooms', () {
     Future<void> seed() async {
-      final recents = RecentRoomsRepository(store);
+      final recents = LocalRecentRoomsRepository(store);
       await recents.record(
         RecentRoom(
           code: testCode,
@@ -336,7 +330,6 @@ void main() {
       );
     }
 
-    // removing is undoable and the row comes back in its place.
     testWidgets('Remove offers Undo, which restores the row', (tester) async {
       await seed();
       await pumpHome(tester);
@@ -357,8 +350,6 @@ void main() {
       );
     });
 
-    // CR4-3: the root SnackBar outlives Home; its Undo must not reach the
-    // closed HomeBloc.
     testWidgets('leaving Home hides the Undo SnackBar', (tester) async {
       await seed();
       final router = await pumpHome(tester);
@@ -375,7 +366,6 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    // a storage failure neither crashes nor changes the list.
     testWidgets('a storage failure on remove keeps the list', (tester) async {
       await seed();
       await pumpHome(tester);
@@ -546,8 +536,6 @@ void main() {
     });
   });
 
-  // a malformed invite link goes straight Home with a notice; no room
-  // frame, no silent redirect.
   group('malformed invite link', () {
     late PendingHomeNotice notices;
     var roomBuilds = 0;
@@ -565,11 +553,9 @@ void main() {
             GoRoute(
               path: AppRoutes.home,
               builder: (context, state) => BlocProvider(
-                create: (_) => HomeBloc(
-                  RecentRoomsRepository(store),
-                  rooms,
-                  FakeGuestProfileRepository(),
-                )..add(const HomeStarted()),
+                create: (_) =>
+                    HomeBloc(LocalRecentRoomsRepository(store), rooms)
+                      ..add(const HomeStarted()),
                 child: HomeScreen(notices: notices),
               ),
             ),

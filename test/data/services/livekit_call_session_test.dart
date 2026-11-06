@@ -22,7 +22,6 @@ class FakeForegroundService extends CallForegroundService {
   Future<void> stop() async => stops++;
 }
 
-/// Driver whose steps the test holds open and whose calls it records.
 class FakeDriver implements MediaRoomDriver {
   void Function(MediaRoomEvent event)? _onEvent;
   Completer<void>? pendingConnect;
@@ -30,10 +29,8 @@ class FakeDriver implements MediaRoomDriver {
   Object? connectError;
   Object? startAudioError;
 
-  /// Thrown by `setMicrophoneEnabled(true)` (blocked or missing device).
   Object? microphoneError;
 
-  /// Thrown by `setCameraEnabled(true)`.
   Object? cameraError;
   final microphoneCalls = <bool>[];
   final cameraCalls = <bool>[];
@@ -101,7 +98,6 @@ class FakeDriver implements MediaRoomDriver {
   }
 }
 
-// the adapter's lifecycle against a fake media room.
 void main() {
   late FakeForegroundService foreground;
   late List<FakeDriver> drivers;
@@ -241,7 +237,6 @@ void main() {
     await session.dispose();
   });
 
-  // every command error is a Failure.
   test('startAudio errors surface as MediaDeviceFailure', () async {
     nextDriver = () => FakeDriver()..startAudioError = StateError('blocked');
     final session = build();
@@ -253,7 +248,6 @@ void main() {
     await session.dispose();
   });
 
-  // a microphone that fails at join is reported, not just logged.
   test('a microphone that cannot open at join is flagged until a toggle '
       'succeeds', () async {
     nextDriver = () => FakeDriver()..microphoneError = StateError('busy');
@@ -279,8 +273,6 @@ void main() {
     await session.dispose();
   });
 
-  // a browser that blocks camera and microphone (web throws a plain
-  // String from getUserMedia) still joins, receive-only, never a failure.
   test('blocked camera and microphone still connect receive-only', () async {
     const denied = 'Unable to getUserMedia: NotAllowedError: Permission denied';
     nextDriver = () => FakeDriver()
@@ -322,7 +314,6 @@ void main() {
     );
     expect(LiveKitRoomDriver.endReason(null), CallEndReason.connectionLost);
   });
-
   test('poor and lost connection quality read as weak', () {
     expect(LiveKitRoomDriver.isWeak(lk.ConnectionQuality.poor), isTrue);
     expect(LiveKitRoomDriver.isWeak(lk.ConnectionQuality.lost), isTrue);

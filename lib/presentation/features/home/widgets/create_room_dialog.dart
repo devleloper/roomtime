@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:roomtime/core/router/app_routes.dart';
+import 'package:roomtime/domain/entities/room.dart';
+import 'package:roomtime/domain/entities/room_password.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/features/home/bloc/home_bloc.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
+import 'package:roomtime/presentation/widgets/glass_button.dart';
+import 'package:roomtime/presentation/widgets/glass_dialog.dart';
+import 'package:roomtime/presentation/widgets/glass_text_field.dart';
+import 'package:roomtime/presentation/widgets/invite_panel.dart';
 
-import '../../../../core/router/app_routes.dart';
-import '../../../../domain/entities/room.dart';
-import '../../../../l10n/l10n.dart';
-import '../../../dialogs/glass_dialog.dart';
-import '../../../theme/theme.dart';
-import '../../../invite/invite_panel.dart';
-import '../../../utils/failure_message.dart';
-import '../bloc/home_bloc.dart';
-
-/// Opens the dev-0.1.6 Create Room dialog (Room Name, Password (Optional),
-/// Cancel / Create). After the room is created the same dialog shows the
-/// invite step (copy link, copy code, share, Join) (flows.md §2, §3).
 Future<void> showCreateRoomDialog(BuildContext context) {
   final bloc = context.read<HomeBloc>()..add(const HomeCreateFormOpened());
   return showGlassDialog<void>(
@@ -64,9 +62,10 @@ class _CreateFormState extends State<_CreateForm> {
     super.dispose();
   }
 
-  /// Empty means no password; otherwise [RoomPassword], taken verbatim.
   String? _validatePassword(AppLocalizations l10n, String value) {
-    if (value.isEmpty) return null;
+    if (value.isEmpty) {
+      return null;
+    }
     return switch (RoomPassword.check(value)) {
       RoomPasswordIssue.tooShort => l10n.homeCreatePasswordTooShort,
       RoomPasswordIssue.tooLong => l10n.homeCreatePasswordTooLong,
@@ -76,14 +75,18 @@ class _CreateFormState extends State<_CreateForm> {
 
   void _submit() {
     final error = _validatePassword(context.l10n, _password.text);
-    setState(() => _passwordError = error);
-    if (error != null) return;
+    setState(() {
+      _passwordError = error;
+    });
+    if (error != null) {
+      return;
+    }
+
     final name = _name.text.trim();
     context.read<HomeBloc>().add(
       HomeCreateRoomRequested(
         CreateRoomParams(
           name: name.isEmpty ? null : name,
-          // Limits are not asked (0.1.6): the server applies its defaults.
           password: _password.text.isEmpty ? null : _password.text,
         ),
       ),
@@ -117,7 +120,11 @@ class _CreateFormState extends State<_CreateForm> {
           autofillHints: const [AutofillHints.newPassword],
           textInputAction: TextInputAction.done,
           onChanged: (_) {
-            if (_passwordError != null) setState(() => _passwordError = null);
+            if (_passwordError != null) {
+              setState(() {
+                _passwordError = null;
+              });
+            }
           },
           onSubmitted: (_) => _submit(),
         ),
@@ -148,9 +155,9 @@ class _CreateFormState extends State<_CreateForm> {
 }
 
 class _InviteStep extends StatelessWidget {
-  const _InviteStep({required this.room});
-
   final CreatedRoom room;
+
+  const _InviteStep({required this.room});
 
   void _join(BuildContext context) {
     final router = GoRouter.of(context);

@@ -1,19 +1,30 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:roomtime/domain/entities/call_snapshot.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/theme/app_color_schemes.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
+import 'package:roomtime/presentation/widgets/participant_video.dart';
 
-import '../../../../domain/entities/call_snapshot.dart';
-import '../../../theme/theme.dart';
-import '../../../shared/participant_video.dart';
-import '../../../../l10n/l10n.dart';
+String participantName(BuildContext context, CallParticipant participant) {
+  if (participant.displayName.isEmpty) {
+    return context.l10n.roomSomeone;
+  }
+  return participant.displayName;
+}
 
-/// Display name with a fallback for participants that sent none.
-String participantName(BuildContext context, CallParticipant p) =>
-    p.displayName.isEmpty ? context.l10n.roomSomeone : p.displayName;
-
-/// One participant: video (or avatar), name pill, mic and speaking state
-/// (flows.md §5 "Tiles"). One semantics node per tile.
 class ParticipantTile extends StatelessWidget {
+  final CallParticipant participant;
+  final bool isLocalHost;
+  final bool frontCamera;
+  final bool fullBleed;
+  final bool cover;
+  final bool showActiveSpeaker;
+  final String? tapHint;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
   const ParticipantTile({
     super.key,
     required this.participant,
@@ -26,22 +37,6 @@ class ParticipantTile extends StatelessWidget {
     this.onTap,
     this.onLongPress,
   });
-
-  final CallParticipant participant;
-
-  /// The local participant is the host (marks "Host" on the local tile).
-  final bool isLocalHost;
-  final bool frontCamera;
-
-  /// Full-screen tile: no rounded corners or border.
-  final bool fullBleed;
-  final bool cover;
-
-  /// Draws the active-speaker border (off in 1:1 layouts).
-  final bool showActiveSpeaker;
-  final String? tapHint;
-  final VoidCallback? onTap;
-  final VoidCallback? onLongPress;
 
   String _semanticsLabel(BuildContext context) {
     final p = participant;
@@ -86,9 +81,7 @@ class ParticipantTile extends StatelessWidget {
         onLongPress: onLongPress,
         child: AnimatedContainer(
           duration: AppMotion.resolve(context, AppMotion.short),
-          // 0.1.6 active speaker: a greenAccent glow behind the tile (a
-          // shadow paints a filled box, so over the video it would tint it
-          // green) and the 3 px border on top.
+          // Keep glow in decoration and border in foregroundDecoration so boxShadow doesn't tint the video.
           decoration: BoxDecoration(
             borderRadius: radius,
             boxShadow: speaking
@@ -136,15 +129,26 @@ class ParticipantTile extends StatelessWidget {
 }
 
 class _NamePill extends StatelessWidget {
+  final CallParticipant participant;
+  final bool isLocalHost;
+  final bool speaking;
+
   const _NamePill({
     required this.participant,
     required this.isLocalHost,
     required this.speaking,
   });
 
-  final CallParticipant participant;
-  final bool isLocalHost;
-  final bool speaking;
+  String _resolveDisplayName(BuildContext context) {
+    final baseName = participantName(context, participant);
+    if (!participant.isLocal) {
+      return baseName;
+    }
+    if (isLocalHost) {
+      return context.l10n.roomNameYouHost(baseName);
+    }
+    return context.l10n.roomNameYou(baseName);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,11 +156,8 @@ class _NamePill extends StatelessWidget {
     final style = Theme.of(
       context,
     ).textTheme.labelMedium?.copyWith(color: semantic.onVideoScrim);
-    final name = !participant.isLocal
-        ? participantName(context, participant)
-        : isLocalHost
-        ? context.l10n.roomNameYouHost(participantName(context, participant))
-        : context.l10n.roomNameYou(participantName(context, participant));
+    final name = _resolveDisplayName(context);
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: semantic.videoScrim,
@@ -212,15 +213,16 @@ class _NamePill extends StatelessWidget {
   }
 }
 
-/// Half-turn flip when the local camera switches between front and back.
 class _CameraFlip extends StatefulWidget {
-  const _CameraFlip({required this.front, required this.child});
-
   final bool front;
   final Widget child;
 
+  const _CameraFlip({required this.front, required this.child});
+
   @override
-  State<_CameraFlip> createState() => _CameraFlipState();
+  State<_CameraFlip> createState() {
+    return _CameraFlipState();
+  }
 }
 
 class _CameraFlipState extends State<_CameraFlip>

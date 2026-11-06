@@ -3,20 +3,19 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:roomtime/core/time/clock.dart';
-import 'package:roomtime/data/datasources/key_value_store.dart';
+import 'package:roomtime/core/utils/clock.dart';
+import 'package:roomtime/data/local/key_value_store.dart';
 import 'package:roomtime/domain/entities/call_snapshot.dart';
 import 'package:roomtime/domain/entities/guest_profile.dart';
 import 'package:roomtime/domain/entities/room.dart';
 import 'package:roomtime/domain/entities/room_code.dart';
-import 'package:roomtime/domain/repositories/i_guest_profile_repository.dart';
-import 'package:roomtime/domain/repositories/i_room_repository.dart';
+import 'package:roomtime/domain/repositories/guest_profile_repository.dart';
+import 'package:roomtime/domain/repositories/room_repository.dart';
+import 'package:roomtime/domain/services/audio_service.dart';
 import 'package:roomtime/domain/services/call_session.dart';
-import 'package:roomtime/domain/services/i_audio_service.dart';
 
 final testCode = RoomCode.tryParse('abcdefghjk')!;
 
-/// The server's invite link for [testCode] (A3-02: never built locally).
 final testInviteUrl = Uri.parse('https://calls.test/r/abc-defg-hjk');
 
 class InMemoryKeyValueStore implements KeyValueStore {
@@ -44,7 +43,6 @@ class FixedClock implements Clock {
   DateTime now() => current;
 }
 
-/// A canned HTTP response for [FakeHttpAdapter].
 class FakeResponse {
   const FakeResponse(this.status, [this.body, this.headers = const {}]);
 
@@ -53,7 +51,6 @@ class FakeResponse {
   final Map<String, String> headers;
 }
 
-/// Dio adapter that records requests and answers from [handler].
 class FakeHttpAdapter implements HttpClientAdapter {
   FakeHttpAdapter(this.handler);
 
@@ -87,7 +84,6 @@ class FakeHttpAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-/// Dio configured like the app's, on a fake adapter.
 Dio fakeDio(FakeHttpAdapter adapter) => Dio(
   BaseOptions(
     baseUrl: 'http://api.test/v1',
@@ -95,7 +91,7 @@ Dio fakeDio(FakeHttpAdapter adapter) => Dio(
   ),
 )..httpClientAdapter = adapter;
 
-class FakeGuestProfileRepository implements IGuestProfileRepository {
+class FakeGuestProfileRepository implements GuestProfileRepository {
   GuestProfile profile = const GuestProfile(
     guestId: '6f1c1a7e-3b0a-4c55-9d1e-2b8f0f4f7a10',
     displayName: 'Ann',
@@ -109,7 +105,7 @@ class FakeGuestProfileRepository implements IGuestProfileRepository {
       profile = profile.copyWith(displayName: displayName);
 }
 
-class SilentAudioService implements IAudioService {
+class SilentAudioService implements AudioService {
   int joins = 0;
   int leaves = 0;
 
@@ -118,10 +114,12 @@ class SilentAudioService implements IAudioService {
 
   @override
   Future<void> playLeaveSound() async => leaves++;
+
+  @override
+  Future<void> dispose() async {}
 }
 
-/// Room repository whose calls are recorded and controlled by the test.
-class FakeRoomRepository implements IRoomRepository {
+class FakeRoomRepository implements RoomRepository {
   Completer<RoomJoin>? pendingJoin;
   Future<RoomJoin> Function(RoomCode code, String? password)? onJoin;
   final joinPasswords = <String?>[];
@@ -132,16 +130,13 @@ class FakeRoomRepository implements IRoomRepository {
   int rotateCalls = 0;
   int lookupCalls = 0;
 
-  /// Thrown by [endRoom] and host commands instead of succeeding.
   Object? hostError;
 
-  /// Holds [endRoom] open until completed.
   Completer<void>? pendingEnd;
   int createCalls = 0;
   CreateRoomParams? createdWith;
   bool owner = false;
 
-  /// Lookup result; a [Failure] here is thrown instead.
   Object lookupResult = sampleSummary();
   Object createResult = sampleCreatedRoom();
 
@@ -212,11 +207,16 @@ class FakeRoomRepository implements IRoomRepository {
   }
 
   @override
-  Future<void> updateRoom(RoomCode code, RoomPatch patch) async =>
-      patches.add(patch);
+  Future<void> updateRoom(RoomCode code, RoomPatch patch) async {
+    final error = hostError;
+    if (error != null) throw error;
+    patches.add(patch);
+  }
 
   @override
   Future<RotatedCode> rotateCode(RoomCode code) async {
+    final error = hostError;
+    if (error != null) throw error;
     rotateCalls++;
     return RotatedCode(
       code: RoomCode.tryParse('zzzzzzzzzz')!,
@@ -288,15 +288,12 @@ const remoteParticipant = CallParticipant(
   audioTrackSid: 'TR_audio',
 );
 
-/// In-memory [CallSession]: records commands, lets the test hold `connect`
-/// open and push snapshots.
 class FakeCallSession implements CallSession {
   final _controller = StreamController<CallSnapshot>.broadcast(sync: true);
   CallSnapshot _snapshot = const CallSnapshot();
 
   Completer<void>? pendingConnect;
 
-  /// Thrown by [connect] instead of connecting.
   Object? connectError;
   CallConnectOptions? connectedWith;
   int connectCalls = 0;

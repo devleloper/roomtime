@@ -1,127 +1,50 @@
 part of 'room_bloc.dart';
 
-sealed class RoomState extends Equatable {
-  const RoomState();
-
-  @override
-  List<Object?> get props => const [];
+sealed class RoomInCall implements RoomState {
+  RoomInfo get room;
+  RoomRole get role;
+  CallSnapshot get call;
+  bool get expiresSoon;
 }
 
-/// Before the first [RoomJoinRequested].
-final class RoomInitial extends RoomState {
-  const RoomInitial();
-}
-
-/// Joining via the API, then connecting the media session.
-final class RoomConnecting extends RoomState {
-  const RoomConnecting(this.code);
-
-  final RoomCode code;
-
-  @override
-  List<Object?> get props => [code];
-}
-
-/// In a call: [RoomConnected] or [RoomReconnecting].
-sealed class RoomInCall extends RoomState {
-  const RoomInCall({
-    required this.room,
-    required this.role,
-    required this.call,
-    this.expiresSoon = false,
-  });
-
-  final RoomInfo room;
-  final RoomRole role;
-  final CallSnapshot call;
-
-  /// Current invite link from the server (changes when the host rotates the
-  /// code).
+extension RoomInCallX on RoomInCall {
   Uri get inviteUrl => room.inviteUrl;
 
-  /// Host only: the invitation expires within [RoomBloc.expiryWarningLead].
-  final bool expiresSoon;
-
   bool get isHost => role == RoomRole.host;
-
-  @override
-  List<Object?> get props => [room, role, call, expiresSoon];
 }
 
-final class RoomConnected extends RoomInCall {
-  const RoomConnected({
-    required super.room,
-    required super.role,
-    required super.call,
-    super.expiresSoon,
-  });
-}
+@Freezed(copyWith: false)
+sealed class RoomState with _$RoomState {
+  const factory RoomState.initial() = RoomInitial;
 
-/// Media connection interrupted; the SDK is trying to restore it.
-final class RoomReconnecting extends RoomInCall {
-  const RoomReconnecting({
-    required super.room,
-    required super.role,
-    required super.call,
-    super.expiresSoon,
-  });
-}
+  const factory RoomState.connecting(RoomCode code) = RoomConnecting;
 
-final class RoomEnded extends RoomState {
-  const RoomEnded(this.reason, {this.code, this.endedByYou = false});
+  @Implements<RoomInCall>()
+  const factory RoomState.connected({
+    required RoomInfo room,
+    required RoomRole role,
+    required CallSnapshot call,
+    @Default(false) bool expiresSoon,
+  }) = RoomConnected;
 
-  final CallEndReason reason;
+  @Implements<RoomInCall>()
+  const factory RoomState.reconnecting({
+    required RoomInfo room,
+    required RoomRole role,
+    required CallSnapshot call,
+    @Default(false) bool expiresSoon,
+  }) = RoomReconnecting;
 
-  /// The room's latest code (after a rotation), for "Rejoin".
-  final RoomCode? code;
+  const factory RoomState.ended(
+    CallEndReason reason, {
+    RoomCode? code,
+    @Default(false) bool endedByYou,
+  }) = RoomEnded;
 
-  /// The host ended the call for everyone from this device.
-  final bool endedByYou;
-
-  @override
-  List<Object?> get props => [reason, code, endedByYou];
-}
-
-/// Join or connect failed; send [RoomJoinRequested] again to retry
-/// (e.g. with a password after [PasswordRequiredFailure]).
-final class RoomFailed extends RoomState {
-  const RoomFailed({required this.code, required this.failure});
-
-  final RoomCode code;
-  final Failure failure;
-
-  @override
-  List<Object?> get props => [code, failure];
-}
-
-/// One-shot UI effects, delivered through [RoomBloc.effects].
-sealed class RoomEffect {
-  const RoomEffect();
-}
-
-final class ParticipantJoinedEffect extends RoomEffect {
-  const ParticipantJoinedEffect(this.participant);
-
-  final CallParticipant participant;
-}
-
-final class ParticipantLeftEffect extends RoomEffect {
-  const ParticipantLeftEffect(this.participant);
-
-  final CallParticipant participant;
-}
-
-/// Host action succeeded on [participant] (null when it already left).
-final class ParticipantMutedEffect extends RoomEffect {
-  const ParticipantMutedEffect(this.participant);
-
-  final CallParticipant? participant;
-}
-
-final class ParticipantRemovedEffect extends RoomEffect {
-  const ParticipantRemovedEffect(this.participant);
-
-  final CallParticipant? participant;
+  const factory RoomState.failed({
+    required RoomCode code,
+    required Failure failure,
+  }) = RoomFailed;
 }
 
 enum RoomSettingsChange {
@@ -131,19 +54,28 @@ enum RoomSettingsChange {
   passwordRemoved,
   inviteRotated;
 
-  static RoomSettingsChange lock(bool isLocked) => isLocked ? locked : unlocked;
+  static RoomSettingsChange lock(bool isLocked) {
+    return isLocked ? locked : unlocked;
+  }
 }
 
-/// Host changed a room setting.
-final class RoomSettingsChangedEffect extends RoomEffect {
-  const RoomSettingsChangedEffect(this.change);
+@freezed
+sealed class RoomEffect with _$RoomEffect {
+  const factory RoomEffect.participantJoined(CallParticipant participant) =
+      ParticipantJoinedEffect;
 
-  final RoomSettingsChange change;
-}
+  const factory RoomEffect.participantLeft(CallParticipant participant) =
+      ParticipantLeftEffect;
 
-/// A command (media toggle or host action) failed; the call goes on.
-final class RoomActionFailedEffect extends RoomEffect {
-  const RoomActionFailedEffect(this.failure);
+  const factory RoomEffect.participantMuted(CallParticipant? participant) =
+      ParticipantMutedEffect;
 
-  final Failure failure;
+  const factory RoomEffect.participantRemoved(CallParticipant? participant) =
+      ParticipantRemovedEffect;
+
+  const factory RoomEffect.settingsChanged(RoomSettingsChange change) =
+      RoomSettingsChangedEffect;
+
+  const factory RoomEffect.actionFailed(Failure failure) =
+      RoomActionFailedEffect;
 }

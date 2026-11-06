@@ -1,174 +1,254 @@
 import 'package:flutter/foundation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:roomtime/domain/entities/room.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
 
-import '../../domain/entities/room.dart';
-import '../../domain/entities/room_code.dart';
-
-// Wire DTOs for the room API v1 (`/v1/rooms`, docs/api/openapi.yaml). Parsing is strict and follows
-// docs/api/openapi.yaml: a missing or mistyped required field throws
-// [FormatException], which the data source maps to `UnknownFailure`.
+part 'room_dtos.freezed.dart';
+part 'room_dtos.g.dart';
 
 typedef Json = Map<String, dynamic>;
 
-T _required<T>(Json json, String key) {
-  final value = json[key];
-  if (value is T) return value;
-  throw FormatException('Field "$key" missing or not $T', json.toString());
-}
+const _loopbackHosts = {'localhost', '127.0.0.1', '::1'};
 
-T? _optional<T>(Json json, String key) {
-  final value = json[key];
-  if (value == null || value is T) return value as T?;
-  throw FormatException('Field "$key" is not $T', json.toString());
-}
+class HttpUriConverter implements JsonConverter<Uri, String> {
+  const HttpUriConverter();
 
-RoomCode _code(String raw) =>
-    RoomCode.tryParse(raw) ?? (throw FormatException('Invalid room code', raw));
-
-DateTime _dateTime(String raw) =>
-    DateTime.tryParse(raw) ?? (throw FormatException('Invalid date-time', raw));
-
-/// An invite link: absolute http(s) with a host, shown and shared as is.
-Uri _uri(String raw) {
-  final uri = Uri.tryParse(raw);
-  if (uri != null &&
-      (uri.isScheme('https') || uri.isScheme('http')) &&
-      uri.host.isNotEmpty) {
-    return uri;
+  @override
+  Uri fromJson(String json) {
+    final uri = Uri.tryParse(json);
+    final isHttp =
+        uri != null && (uri.isScheme('https') || uri.isScheme('http'));
+    if (isHttp && uri.host.isNotEmpty) {
+      return uri;
+    }
+    throw FormatException('Invalid URL', json);
   }
-  throw FormatException('Invalid URL', raw);
+
+  @override
+  String toJson(Uri object) => object.toString();
 }
 
-RoomRole _role(String raw) => switch (raw) {
-  'host' => RoomRole.host,
-  'participant' => RoomRole.participant,
-  _ => throw FormatException('Unknown role', raw),
-};
+@freezed
+abstract class CreateRoomRequestDto with _$CreateRoomRequestDto {
+  const CreateRoomRequestDto._();
 
-/// `POST /rooms` body.
-class CreateRoomRequestDto {
-  const CreateRoomRequestDto(this.params);
+  const factory CreateRoomRequestDto({
+    @JsonKey(includeIfNull: false) String? name,
+    @JsonKey(includeIfNull: false) String? password,
+    @JsonKey(includeIfNull: false) int? maxParticipants,
+    @JsonKey(includeIfNull: false) int? lifetimeMinutes,
+    @JsonKey(includeIfNull: false) bool? e2ee,
+  }) = _CreateRoomRequestDto;
 
-  final CreateRoomParams params;
+  factory CreateRoomRequestDto.fromParams(CreateRoomParams params) {
+    return CreateRoomRequestDto(
+      name: params.name,
+      password: params.password,
+      maxParticipants: params.maxParticipants,
+      lifetimeMinutes: params.lifetimeMinutes,
+      e2ee: params.e2ee,
+    );
+  }
 
-  Json toJson() => {
-    if (params.name != null) 'name': params.name,
-    if (params.password != null) 'password': params.password,
-    if (params.maxParticipants != null)
-      'maxParticipants': params.maxParticipants,
-    if (params.lifetimeMinutes != null)
-      'lifetimeMinutes': params.lifetimeMinutes,
-    if (params.e2ee != null) 'e2ee': params.e2ee,
-  };
+  factory CreateRoomRequestDto.fromJson(Json json) =>
+      _$CreateRoomRequestDtoFromJson(json);
+
+  @override
+  String toString() {
+    return 'CreateRoomRequestDto(name: $name, '
+        'hasPassword: ${password != null})';
+  }
 }
 
-/// `201` of `POST /rooms`.
-class CreateRoomResponseDto {
-  const CreateRoomResponseDto({required this.room, required this.ownerToken});
+@freezed
+abstract class CreateRoomResponseDto with _$CreateRoomResponseDto {
+  const CreateRoomResponseDto._();
 
-  factory CreateRoomResponseDto.fromJson(Json json) => CreateRoomResponseDto(
-    ownerToken: _required<String>(json, 'ownerToken'),
-    room: CreatedRoom(
-      roomId: _required<String>(json, 'roomId'),
-      code: _code(_required<String>(json, 'code')),
-      inviteUrl: _uri(_required<String>(json, 'inviteUrl')),
-      name: _optional<String>(json, 'name'),
-      passwordRequired: _required<bool>(json, 'passwordRequired'),
-      e2ee: _required<bool>(json, 'e2ee'),
-      maxParticipants: _required<int>(json, 'maxParticipants'),
-      expiresAt: _dateTime(_required<String>(json, 'expiresAt')),
-    ),
-  );
+  const factory CreateRoomResponseDto({
+    required String roomId,
+    @RoomCodeConverter() required RoomCode code,
+    @HttpUriConverter() required Uri inviteUrl,
+    required String ownerToken,
+    String? name,
+    required bool passwordRequired,
+    required bool e2ee,
+    required int maxParticipants,
+    required DateTime expiresAt,
+  }) = _CreateRoomResponseDto;
 
-  final CreatedRoom room;
-  final String ownerToken;
+  factory CreateRoomResponseDto.fromJson(Json json) =>
+      _$CreateRoomResponseDtoFromJson(json);
+
+  @override
+  String toString() => 'CreateRoomResponseDto(roomId: $roomId, code: $code)';
+
+  CreatedRoom get room {
+    return CreatedRoom(
+      roomId: roomId,
+      code: code,
+      inviteUrl: inviteUrl,
+      name: name,
+      passwordRequired: passwordRequired,
+      e2ee: e2ee,
+      maxParticipants: maxParticipants,
+      expiresAt: expiresAt,
+    );
+  }
 }
 
-/// `200` of `GET /rooms/{code}`.
-RoomSummary roomSummaryFromJson(Json json) => RoomSummary(
-  code: _code(_required<String>(json, 'code')),
-  inviteUrl: _uri(_required<String>(json, 'inviteUrl')),
-  name: _optional<String>(json, 'name'),
-  passwordRequired: _required<bool>(json, 'passwordRequired'),
-  e2ee: _required<bool>(json, 'e2ee'),
-  locked: _required<bool>(json, 'locked'),
-  expiresAt: _dateTime(_required<String>(json, 'expiresAt')),
-);
+@freezed
+abstract class RoomSummaryDto with _$RoomSummaryDto {
+  const RoomSummaryDto._();
 
-/// `POST /rooms/{code}/join` body.
-class JoinRequestDto {
-  const JoinRequestDto({
-    required this.displayName,
-    required this.guestId,
-    this.password,
-  });
+  const factory RoomSummaryDto({
+    @RoomCodeConverter() required RoomCode code,
+    @HttpUriConverter() required Uri inviteUrl,
+    String? name,
+    required bool passwordRequired,
+    required bool e2ee,
+    required bool locked,
+    required DateTime expiresAt,
+  }) = _RoomSummaryDto;
 
-  final String displayName;
-  final String guestId;
-  final String? password;
+  factory RoomSummaryDto.fromJson(Json json) => _$RoomSummaryDtoFromJson(json);
 
-  Json toJson() => {
-    'displayName': displayName,
-    'guestId': guestId,
-    if (password != null) 'password': password,
-  };
+  RoomSummary toDomain() {
+    return RoomSummary(
+      code: code,
+      inviteUrl: inviteUrl,
+      name: name,
+      passwordRequired: passwordRequired,
+      e2ee: e2ee,
+      locked: locked,
+      expiresAt: expiresAt,
+    );
+  }
 }
 
-/// `200` of `POST /rooms/{code}/join`. Every field the contract marks
-/// required is required here (`JoinResponse`, `JoinedRoom`).
-RoomJoin roomJoinFromJson(Json json, {bool requireSecureMedia = kReleaseMode}) {
-  final room = _required<Json>(json, 'room');
-  return RoomJoin(
-    token: _required<String>(json, 'token'),
-    livekitUrl: mediaUrl(
-      _required<String>(json, 'livekitUrl'),
+@freezed
+abstract class JoinRequestDto with _$JoinRequestDto {
+  const JoinRequestDto._();
+
+  const factory JoinRequestDto({
+    required String displayName,
+    required String guestId,
+    @JsonKey(includeIfNull: false) String? password,
+  }) = _JoinRequestDto;
+
+  factory JoinRequestDto.fromJson(Json json) => _$JoinRequestDtoFromJson(json);
+
+  @override
+  String toString() {
+    return 'JoinRequestDto(displayName: $displayName, '
+        'hasPassword: ${password != null})';
+  }
+}
+
+@freezed
+abstract class RoomInfoDto with _$RoomInfoDto {
+  const RoomInfoDto._();
+
+  const factory RoomInfoDto({
+    @RoomCodeConverter() required RoomCode code,
+    @HttpUriConverter() required Uri inviteUrl,
+    String? name,
+    required bool passwordRequired,
+    required bool e2ee,
+    required bool locked,
+    required int maxParticipants,
+    required DateTime expiresAt,
+  }) = _RoomInfoDto;
+
+  factory RoomInfoDto.fromJson(Json json) => _$RoomInfoDtoFromJson(json);
+
+  RoomInfo toDomain() {
+    return RoomInfo(
+      code: code,
+      inviteUrl: inviteUrl,
+      name: name,
+      passwordRequired: passwordRequired,
+      e2ee: e2ee,
+      locked: locked,
+      maxParticipants: maxParticipants,
+      expiresAt: expiresAt,
+    );
+  }
+}
+
+@freezed
+abstract class RoomJoinDto with _$RoomJoinDto {
+  const RoomJoinDto._();
+
+  const factory RoomJoinDto({
+    required String token,
+    required String livekitUrl,
+    required String identity,
+    required RoomRole role,
+    required RoomInfoDto room,
+  }) = _RoomJoinDto;
+
+  factory RoomJoinDto.fromJson(Json json) => _$RoomJoinDtoFromJson(json);
+
+  @override
+  String toString() => 'RoomJoinDto(identity: $identity, role: $role)';
+
+  RoomJoin toDomain({bool requireSecureMedia = kReleaseMode}) {
+    final validatedMediaUrl = mediaUrl(
+      livekitUrl,
       requireSecure: requireSecureMedia,
-    ),
-    identity: _required<String>(json, 'identity'),
-    role: _role(_required<String>(json, 'role')),
-    room: RoomInfo(
-      code: _code(_required<String>(room, 'code')),
-      inviteUrl: _uri(_required<String>(room, 'inviteUrl')),
-      name: _optional<String>(room, 'name'),
-      passwordRequired: _required<bool>(room, 'passwordRequired'),
-      e2ee: _required<bool>(room, 'e2ee'),
-      locked: _required<bool>(room, 'locked'),
-      maxParticipants: _required<int>(room, 'maxParticipants'),
-      expiresAt: _dateTime(_required<String>(room, 'expiresAt')),
-    ),
-  );
+    );
+    return RoomJoin(
+      token: token,
+      livekitUrl: validatedMediaUrl,
+      identity: identity,
+      role: role,
+      room: room.toDomain(),
+    );
+  }
 }
 
-/// Checks the LiveKit URL from a join response. Release builds
-/// accept `wss://` and, for a local development backend, `ws://` on a
-/// loopback host only (that traffic never leaves the device; a release
-/// web build against a local backend failed every join). Debug and
-/// profile builds accept any `ws://` host. Anything else is a malformed
-/// response.
 @visibleForTesting
 String mediaUrl(String raw, {required bool requireSecure}) {
   final uri = Uri.tryParse(raw);
   final secure = uri != null && uri.isScheme('wss') && uri.host.isNotEmpty;
   final plain = uri != null && uri.isScheme('ws') && uri.host.isNotEmpty;
   final loopback = plain && _loopbackHosts.contains(uri.host);
-  if (secure || loopback || (plain && !requireSecure)) return raw;
+  if (secure || loopback || (plain && !requireSecure)) {
+    return raw;
+  }
   throw const FormatException('insecure_media_url');
 }
 
-const _loopbackHosts = {'localhost', '127.0.0.1', '::1'};
-
-/// `PATCH /rooms/{code}` body.
-Json roomPatchToJson(RoomPatch patch) => {
-  if (patch.locked != null) 'locked': patch.locked,
-  if (patch.name != null) 'name': patch.name,
-  if (patch.password case final change?)
-    'password': switch (change) {
+Json roomPatchToJson(RoomPatch patch) {
+  final json = <String, dynamic>{};
+  if (patch.locked != null) {
+    json['locked'] = patch.locked;
+  }
+  if (patch.name != null) {
+    json['name'] = patch.name;
+  }
+  final passwordChange = patch.password;
+  if (passwordChange != null) {
+    json['password'] = switch (passwordChange) {
       SetPassword(:final password) => password,
       RemovePassword() => null,
-    },
-};
+    };
+  }
+  return json;
+}
 
-/// `200` of `POST /rooms/{code}/rotate-code`.
-RotatedCode rotatedCodeFromJson(Json json) => RotatedCode(
-  code: _code(_required<String>(json, 'code')),
-  inviteUrl: _uri(_required<String>(json, 'inviteUrl')),
-);
+@freezed
+abstract class RotatedCodeDto with _$RotatedCodeDto {
+  const RotatedCodeDto._();
+
+  const factory RotatedCodeDto({
+    @RoomCodeConverter() required RoomCode code,
+    @HttpUriConverter() required Uri inviteUrl,
+  }) = _RotatedCodeDto;
+
+  factory RotatedCodeDto.fromJson(Json json) => _$RotatedCodeDtoFromJson(json);
+
+  RotatedCode toDomain() {
+    return RotatedCode(code: code, inviteUrl: inviteUrl);
+  }
+}

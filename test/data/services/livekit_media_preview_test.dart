@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:roomtime/data/services/livekit_media_preview.dart';
+import 'package:roomtime/data/services/preview_devices.dart';
 import 'package:roomtime/domain/services/media_preview.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,7 +19,6 @@ class FakeTrack implements PreviewTrack {
   Future<void> stop() async => stopped = true;
 }
 
-/// Devices whose opens the test can hold and fail.
 class FakeDevices implements PreviewDevices {
   FakeDevices({this.hasPermissionApi = false});
 
@@ -70,7 +70,6 @@ class FakeDevices implements PreviewDevices {
   Future<void> openSettings() async {}
 }
 
-// the preview adapter's sequencing, without a camera.
 void main() {
   late FakeDevices devices;
   late LiveKitMediaPreview preview;
@@ -141,7 +140,6 @@ void main() {
     expect(preview.state.videoTrack, isNull);
   });
 
-  // release is sticky until the lobby starts the preview again.
   test('after release nothing reopens the camera until start', () async {
     await preview.start(camera: true, microphone: true);
     await preview.release();
@@ -218,7 +216,6 @@ void main() {
       },
     );
 
-    // CR4-1: access granted in the system settings counts on return.
     test('refreshAccess re-reads a permanent refusal and opens the camera '
         'once', () async {
       devices.statuses = {
@@ -256,7 +253,6 @@ void main() {
     });
   });
 
-  // web and macOS learn about the microphone in the lobby.
   group('microphone probe (web, macOS)', () {
     test('a refused microphone reads as denied', () async {
       devices.microphoneError = StateError('NotAllowedError');

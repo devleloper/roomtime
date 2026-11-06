@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:roomtime/presentation/theme/app_color_schemes.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
 
-import '../theme/app_color_schemes.dart';
-import '../theme/app_tokens.dart';
-
-/// Draws a keyboard focus ring outside [child] with a gap, without changing
-/// the child's layout. Contrast of the ring (`AppSemanticColors.focusRing`)
-/// against the surrounding surface is >= 3:1 (WCAG 2.4.7, 1.4.11).
 class FocusRing extends StatelessWidget {
+  final bool visible;
+  final Widget child;
+
+  final BorderRadius borderRadius;
+  final Color? color;
+
   const FocusRing({
     super.key,
     required this.visible,
@@ -14,13 +16,6 @@ class FocusRing extends StatelessWidget {
     this.borderRadius = AppRadius.fullAll,
     this.color,
   });
-
-  final bool visible;
-  final Widget child;
-
-  /// Radius of [child]; the ring follows it, grown by the gap.
-  final BorderRadius borderRadius;
-  final Color? color;
 
   @override
   Widget build(BuildContext context) {

@@ -1,35 +1,36 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:roomtime/core/utils/platform.dart';
+import 'package:roomtime/domain/entities/guest_profile.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
+import 'package:roomtime/domain/entities/room_password.dart';
+import 'package:roomtime/domain/failures/failure.dart';
+import 'package:roomtime/domain/services/media_preview.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/features/room/bloc/lobby_cubit.dart';
+import 'package:roomtime/presentation/features/room/bloc/room_bloc.dart';
+import 'package:roomtime/presentation/features/room/view/join_error_view.dart';
+import 'package:roomtime/presentation/features/room/widgets/lobby_device_notices.dart';
+import 'package:roomtime/presentation/features/room/widgets/media_controls.dart';
+import 'package:roomtime/presentation/features/room/widgets/media_shortcuts.dart';
+import 'package:roomtime/presentation/features/room/widgets/room_title.dart';
+import 'package:roomtime/presentation/theme/app_colors.dart';
+import 'package:roomtime/presentation/widgets/glass_button.dart';
+import 'package:roomtime/presentation/widgets/glass_dialog.dart';
+import 'package:roomtime/presentation/widgets/glass_surface.dart';
+import 'package:roomtime/presentation/widgets/glass_text_field.dart';
+import 'package:roomtime/presentation/widgets/invite_panel.dart';
+import 'package:roomtime/presentation/widgets/liquid_bounce_button.dart';
 
-import '../../../../domain/entities/guest_profile.dart';
-import '../../../../domain/entities/room.dart';
-import '../../../../domain/entities/room_code.dart';
-import '../../../../domain/failures/failure.dart';
-import '../../../../domain/services/media_preview.dart';
-import '../../../dialogs/glass_dialog.dart';
-import '../../../theme/theme.dart';
-import '../../../utils/failure_message.dart';
-import '../../../widgets/widgets.dart';
-import '../../../invite/invite_panel.dart';
-import '../bloc/lobby_cubit.dart';
-import '../bloc/room_bloc.dart';
-import '../widgets/media_controls.dart';
-import '../widgets/media_shortcuts.dart';
-import '../../../shared/participant_video.dart';
-import '../../../shared/platform.dart';
-import 'join_error_view.dart';
-import '../../../../l10n/l10n.dart';
-
-/// Device choices the user joined with, kept for "Rejoin".
 typedef DeviceChoice = ({bool camera, bool microphone});
 
-/// Pre-join (flows.md §4): preview, devices, name and password. The password
-/// lives here because only the join request can verify it.
-/// Expects a [LobbyCubit] and a [RoomBloc] above it.
 class LobbyView extends StatelessWidget {
+  final RoomCode code;
+  final VoidCallback onHome;
+  final ValueChanged<DeviceChoice> onJoining;
+
   const LobbyView({
     super.key,
     required this.code,
@@ -37,61 +38,62 @@ class LobbyView extends StatelessWidget {
     required this.onJoining,
   });
 
-  final RoomCode code;
-  final VoidCallback onHome;
-  final ValueChanged<DeviceChoice> onJoining;
-
   @override
   Widget build(BuildContext context) {
     final lobby = context.read<LobbyCubit>();
     return BlocBuilder<LobbyCubit, LobbyState>(
       buildWhen: (previous, current) => previous.status != current.status,
-      builder: (context, state) => switch (state.status) {
-        LobbyStatus.loading => Scaffold(
-          backgroundColor: Colors.black,
-          body: Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-              semanticsLabel: context.l10n.roomFinding,
+      builder: (context, state) {
+        return switch (state.status) {
+          LobbyStatus.loading => Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: CircularProgressIndicator(
+                color: AppColors.primary,
+                semanticsLabel: context.l10n.roomFinding,
+              ),
             ),
           ),
-        ),
-        LobbyStatus.notFound => JoinErrorView(
-          failure: const RoomNotFoundFailure(),
-          onHome: onHome,
-        ),
-        LobbyStatus.failed => JoinErrorView(
-          failure: state.failure ?? const UnknownFailure(),
-          onHome: onHome,
-          onRetry: lobby.retry,
-        ),
-        LobbyStatus.ready => _LobbyForm(
-          code: code,
-          onHome: onHome,
-          onJoining: onJoining,
-        ),
+          LobbyStatus.notFound => JoinErrorView(
+            failure: const RoomNotFoundFailure(),
+            onHome: onHome,
+          ),
+          LobbyStatus.failed => JoinErrorView(
+            failure: state.failure ?? const UnknownFailure(),
+            onHome: onHome,
+            onRetry: lobby.retry,
+          ),
+          LobbyStatus.ready => _LobbyForm(
+            code: code,
+            onHome: onHome,
+            onJoining: onJoining,
+          ),
+        };
       },
     );
   }
 }
 
 class _LobbyForm extends StatefulWidget {
+  final RoomCode code;
+  final VoidCallback onHome;
+  final ValueChanged<DeviceChoice> onJoining;
+
   const _LobbyForm({
     required this.code,
     required this.onHome,
     required this.onJoining,
   });
 
-  final RoomCode code;
-  final VoidCallback onHome;
-  final ValueChanged<DeviceChoice> onJoining;
-
   @override
-  State<_LobbyForm> createState() => _LobbyFormState();
+  State<_LobbyForm> createState() {
+    return _LobbyFormState();
+  }
 }
 
 class _LobbyFormState extends State<_LobbyForm> {
   static const _defaultLockout = Duration(seconds: 60);
+  static const double _backButtonBand = 72;
 
   late final LobbyCubit _lobby = context.read<LobbyCubit>();
   late final RoomBloc _room = context.read<RoomBloc>();
@@ -106,23 +108,14 @@ class _LobbyFormState extends State<_LobbyForm> {
   Failure? _inlineFailure;
   int _lockoutSeconds = 0;
 
-  /// Read once by screen readers: the live region keeps the time from when
-  /// the lock-out started instead of announcing every tick.
   String? _lockoutAnnouncement;
   Timer? _lockoutTimer;
   bool _announceRetry = false;
 
-  /// Set from the Join tap until the attempt fails: the preview is being
-  /// released or the call is connecting, so no device control may reopen
-  /// the camera.
   bool _joining = false;
 
-  /// Keyboard-first devices focus the empty name field; otherwise the lobby
-  /// shortcuts take focus, so Ctrl/⌘+D and +E work at once. Touch
-  /// devices, mobile web included, never autofocus a field.
   late final bool _autofocusName = !isTouchPlatform && _name.text.isEmpty;
 
-  /// Access may have changed in the system settings meanwhile (CR4-1).
   late final AppLifecycleListener _lifecycle;
 
   @override
@@ -130,7 +123,9 @@ class _LobbyFormState extends State<_LobbyForm> {
     super.initState();
     _lifecycle = AppLifecycleListener(
       onResume: () {
-        if (!_isJoining) unawaited(_lobby.refreshAccess());
+        if (!_isJoining) {
+          unawaited(_lobby.refreshAccess());
+        }
       },
     );
     _name.addListener(_rebuild);
@@ -147,27 +142,34 @@ class _LobbyFormState extends State<_LobbyForm> {
     super.dispose();
   }
 
-  void _rebuild() => setState(() {});
+  void _rebuild() {
+    setState(() {});
+  }
 
-  bool get _isJoining => _joining || _room.state is RoomConnecting;
+  bool get _isJoining {
+    return _joining || _room.state is RoomConnecting;
+  }
 
-  bool get _canJoin =>
-      !_isJoining &&
-      _lockoutSeconds == 0 &&
-      GuestProfile.normalizeDisplayName(_name.text) != null &&
-      (!_needsPassword || _password.text.isNotEmpty);
+  bool get _canJoin {
+    return !_isJoining &&
+        _lockoutSeconds == 0 &&
+        GuestProfile.normalizeDisplayName(_name.text) != null &&
+        (!_needsPassword || _password.text.isNotEmpty);
+  }
 
   Future<void> _join() async {
     final name = GuestProfile.normalizeDisplayName(_name.text);
     if (name == null) {
-      setState(
-        () => _nameError = _name.text.trim().isEmpty
+      setState(() {
+        _nameError = _name.text.trim().isEmpty
             ? context.l10n.roomNameRequired
-            : context.l10n.roomNameTooLong,
-      );
+            : context.l10n.roomNameTooLong;
+      });
       return;
     }
-    if (!_canJoin) return;
+    if (!_canJoin) {
+      return;
+    }
     final preview = _lobby.state.preview;
     final camera =
         preview.cameraEnabled && preview.cameraAccess != DeviceAccess.denied;
@@ -185,9 +187,10 @@ class _LobbyFormState extends State<_LobbyForm> {
       camera: preview.cameraEnabled,
       microphone: preview.microphoneEnabled,
     ));
-    // The call opens its own camera; the preview releases it first.
     await _lobby.releaseDevices();
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     _room.add(
       RoomJoinRequested(
         code: widget.code,
@@ -200,7 +203,9 @@ class _LobbyFormState extends State<_LobbyForm> {
   }
 
   void _onRoomState(BuildContext context, RoomState state) {
-    if (state is! RoomFailed || isFullScreenJoinFailure(state.failure)) return;
+    if (state is! RoomFailed || isFullScreenJoinFailure(state.failure)) {
+      return;
+    }
     final failure = state.failure;
     setState(() {
       _joining = false;
@@ -212,7 +217,6 @@ class _LobbyFormState extends State<_LobbyForm> {
         case InvalidPasswordFailure():
           _needsPassword = true;
           _passwordError = context.l10n.roomWrongPassword;
-          // typing starts from an empty field on every platform.
           _password.clear();
           _focusPassword();
         case TooManyAttemptsFailure(:final retryAfter):
@@ -230,7 +234,9 @@ class _LobbyFormState extends State<_LobbyForm> {
 
   void _focusPassword() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _passwordFocus.requestFocus();
+      if (mounted) {
+        _passwordFocus.requestFocus();
+      }
     });
   }
 
@@ -242,7 +248,10 @@ class _LobbyFormState extends State<_LobbyForm> {
     );
     _announceRetry = false;
     _lockoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return timer.cancel();
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       setState(() {
         _lockoutSeconds--;
         if (_lockoutSeconds <= 0) {
@@ -274,18 +283,19 @@ class _LobbyFormState extends State<_LobbyForm> {
 
   Widget _buildForm(BuildContext context, LobbyState state) {
     final summary = state.summary!;
-    final roomName = summary.name;
-    final title = roomName == null || roomName.isEmpty
-        ? context.l10n.roomTitleUnnamed(summary.code.display)
-        : roomName;
+    final title = roomTitle(context, summary.name, summary.code);
     final preview = state.preview;
     final joining = _isJoining;
     void toggleMicrophone() {
-      if (!_isJoining) _lobby.setMicrophoneEnabled(!preview.microphoneEnabled);
+      if (!_isJoining) {
+        _lobby.setMicrophoneEnabled(!preview.microphoneEnabled);
+      }
     }
 
     void toggleCamera() {
-      if (!_isJoining) _lobby.setCameraEnabled(!preview.cameraEnabled);
+      if (!_isJoining) {
+        _lobby.setCameraEnabled(!preview.cameraEnabled);
+      }
     }
 
     final name =
@@ -301,13 +311,7 @@ class _LobbyFormState extends State<_LobbyForm> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            _LobbyBackdrop(preview: preview, name: name),
-            // No veil over the preview: the user checks the camera
-            // here. Only the panel is frosted, with a darker tint so its
-            // text reads over a bright frame. Wide windows put it on the
-            // start side like the Home sidebar, phones at the bottom.
-            // The band under the back button is outside the scroll view,
-            // so the scrolled card never slides beneath it.
+            LobbyBackdrop(preview: preview, name: name),
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.only(top: _backButtonBand),
@@ -361,46 +365,6 @@ class _LobbyFormState extends State<_LobbyForm> {
     );
   }
 
-  /// Permission explainer and "blocked" notices.
-  List<Widget> _deviceNotices(
-    BuildContext context,
-    MediaPreviewState preview,
-    bool joining,
-  ) {
-    final settings = _lobby.canOpenSettings;
-    final micBlocked =
-        preview.microphoneEnabled &&
-        preview.microphoneAccess == DeviceAccess.denied;
-    return [
-      if (preview.needsPermissionPrompt && !joining)
-        _Notice(
-          text: context.l10n.roomPermExplainer,
-          actionLabel: context.l10n.roomPermAllow,
-          onAction: _lobby.requestAccess,
-        ),
-      if (preview.cameraEnabled && preview.cameraAccess == DeviceAccess.denied)
-        _Notice(
-          text: settings
-              ? context.l10n.roomCameraBlocked
-              : kIsWeb
-              ? context.l10n.roomCameraBlockedWeb
-              : context.l10n.roomCameraBlockedDesktop,
-          actionLabel: settings ? context.l10n.roomOpenSettings : null,
-          onAction: settings ? _lobby.openSettings : null,
-        ),
-      if (micBlocked)
-        _Notice(
-          text: settings
-              ? context.l10n.roomMicBlocked
-              : kIsWeb
-              ? context.l10n.roomMicBlockedWeb
-              : context.l10n.roomMicBlockedDesktop,
-          actionLabel: settings ? context.l10n.roomOpenSettings : null,
-          onAction: settings ? _lobby.openSettings : null,
-        ),
-    ];
-  }
-
   Widget _details(
     BuildContext context,
     LobbyState state,
@@ -413,7 +377,6 @@ class _LobbyFormState extends State<_LobbyForm> {
     final summary = state.summary!;
     final micOn = preview.microphoneEnabled;
     final cameraOn = preview.cameraEnabled;
-    final notices = _deviceNotices(context, preview, joining);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -439,7 +402,13 @@ class _LobbyFormState extends State<_LobbyForm> {
             textAlign: TextAlign.center,
           ),
         ],
-        for (final notice in notices) ...[const SizedBox(height: 16), notice],
+        LobbyDeviceNotices(
+          preview: preview,
+          joining: joining,
+          canOpenSettings: _lobby.canOpenSettings,
+          onRequestAccess: _lobby.requestAccess,
+          onOpenSettings: _lobby.openSettings,
+        ),
         const SizedBox(height: 24),
         GlassTextField(
           controller: _name,
@@ -454,7 +423,9 @@ class _LobbyFormState extends State<_LobbyForm> {
           enabled: !joining,
           autofocus: _autofocusName,
           onChanged: (_) {
-            if (_nameError != null) setState(() => _nameError = null);
+            if (_nameError != null) {
+              setState(() => _nameError = null);
+            }
           },
           onSubmitted: (_) {
             if (_needsPassword) {
@@ -466,8 +437,7 @@ class _LobbyFormState extends State<_LobbyForm> {
         ),
         if (_needsPassword) ...[
           const SizedBox(height: 16),
-          // No autofill: a saved password would be offered for
-          // every room on this origin.
+          // Omit autofillHints so password managers don't save room passwords per web origin.
           GlassTextField(
             controller: _password,
             focusNode: _passwordFocus,
@@ -497,7 +467,6 @@ class _LobbyFormState extends State<_LobbyForm> {
         ],
         if (_lockoutSeconds > 0) ...[
           const SizedBox(height: 16),
-          // Announced once; the ticking digits are not a live region.
           Semantics(
             liveRegion: true,
             label: _lockoutAnnouncement,
@@ -555,54 +524,3 @@ class _LobbyFormState extends State<_LobbyForm> {
     );
   }
 }
-
-/// White70 notice with an optional secondary glass button.
-class _Notice extends StatelessWidget {
-  const _Notice({required this.text, this.actionLabel, this.onAction});
-
-  final String text;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Semantics(
-        liveRegion: true,
-        child: GlassDialogText(text, textAlign: TextAlign.center),
-      ),
-      if (actionLabel != null && onAction != null) ...[
-        const SizedBox(height: 8),
-        GlassDialogButton(label: actionLabel!, onPressed: onAction),
-      ],
-    ],
-  );
-}
-
-/// The local camera behind the lobby veil, or black with the avatar.
-class _LobbyBackdrop extends StatelessWidget {
-  const _LobbyBackdrop({required this.preview, required this.name});
-
-  final MediaPreviewState preview;
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final cameraOn = preview.cameraEnabled;
-    final showVideo = cameraOn && preview.videoTrack != null;
-    return Semantics(
-      container: true,
-      label: cameraOn
-          ? context.l10n.roomPreviewOn
-          : context.l10n.roomPreviewOff,
-      child: showVideo
-          ? ParticipantVideo(videoTrack: preview.videoTrack, name: name)
-          : const ColoredBox(color: Colors.black),
-    );
-  }
-}
-
-/// Back button inset (16) + size (48) + a gap (8).
-const double _backButtonBand = 72;

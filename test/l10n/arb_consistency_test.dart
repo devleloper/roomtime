@@ -5,8 +5,6 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:roomtime/l10n/app_localizations.dart';
 
-/// Keys and placeholders of every locale match the English template, and
-/// Russian plurals cover the one/few/many categories.
 void main() {
   Map<String, dynamic> read(String name) =>
       jsonDecode(File('lib/l10n/$name').readAsStringSync())
