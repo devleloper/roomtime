@@ -37,8 +37,19 @@ Release 1 of the app formerly called FamilyCalls.
 - **Breaking:** renamed to RoomTime: Dart package `roomtime`, app ids `dev.devlet.roomtime`.
 - **Breaking:** requires the room API v1; rooms are no longer identified by their name and there is no public room
   list.
+- Simpler code structure: small files and widgets (`core/utils`, `core/router`, `data/network`, `data/local`,
+  feature widgets), freezed for entities, states and events, json_serializable for DTOs and stored values; the
+  generated code is committed and CI checks that it is up to date.
 - Web release builds work again: the glass effect of the original widgets is drawn without shaders
   (`GlassEffect`), so `liquid_glass_renderer` is no longer used; the look is unchanged.
+
+### Fixed
+
+- Recent rooms store their last-joined time in UTC, so the order and "minutes ago" stay right after a time zone
+  change.
+- Debug output never prints room passwords, owner tokens or media tokens, and malformed-response logs show no room
+  codes.
+- Network errors of new Dio error types map to the network failure message.
 
 ### Removed
 

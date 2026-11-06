@@ -34,7 +34,7 @@ Per-platform commands are in the [README](README.md#getting-started).
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs these commands; run them before you push:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs   # after DI changes; commit lib/core/di/injection.config.dart
+dart run build_runner build --delete-conflicting-outputs   # after model or DI changes; commit the generated files
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test

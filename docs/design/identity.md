@@ -1,7 +1,8 @@
 # RoomTime visual identity
 
-Status: v2 (RoomTime Blue, icon options) · 2026-11-04 · Owner: maintainers
-Code: `lib/presentation/theme/` (palette, schemes, typography), `lib/presentation/widgets/room_time_logo.dart`.
+Status: v2 (RoomTime Blue, icon options) · 2026-11-06 · Owner: maintainers
+Code: `lib/presentation/theme/` (`AppPalette` in `app_colors.dart`, schemes, typography). The app UI draws no
+logo ([§8](#8-in-the-app)).
 Assets: `assets/brand/` (masters in `src/`, rasters in `icon/`, `splash/`, `logo/`, build script in `tool/`).
 Token tables and every contrast pair of the UI: [tokens.md](tokens.md).
 
@@ -27,8 +28,8 @@ pictograms or child-like shapes.
 
 ## 2. The mark
 
-Status: **option C "Door swing" is the RoomTime mark** (chosen by the user 2026-11-04): production assets, the
-in-app `RoomTimeLogo` and the build default. Options B and A are rejected and kept only as documented, buildable
+Status: **option C "Door swing" is the RoomTime mark** (chosen by the user 2026-11-04): production assets and the
+build default. Options B and A are rejected and kept only as documented, buildable
 references.
 
 ![Icon options B, C and reference A](img/icon-options.png)
@@ -45,14 +46,9 @@ All three are original geometric work (no camera, handset, people or green; noth
 WhatsApp or Messenger marks). Each is one color with cut-outs, so the full-color, reversed, one-color and Android
 themed versions are the same path in different inks.
 
-**Switching marks** (only if the decision is reversed):
-
-1. `python3 assets/brand/tool/build.py --mark B` regenerates every SVG master, PNG and preview sheet
-   (no flag = C).
-2. Replace `_MarkPainter._mark` in `lib/presentation/widgets/room_time_logo.dart` with the path of the other
-   master (B: `M14 11H46A25 25 0 0 1 60.52 56.35L82 85H60L42 61H35V85H14Z M35 49V36A11 11 0 0 1 57 36V49Z`,
-   even-odd fill), set `_capHeight` (B 37) and `_artboardMargin` (B 14), change the build default, and point
-   `brand_test.dart` at that master.
+**Switching marks** (only if the decision is reversed): `python3 assets/brand/tool/build.py --mark B`
+regenerates every SVG master, PNG and preview sheet (no flag = C); then change the `--mark` default in `build.py`
+and copy the rasters to the platform folders (§6, §7).
 
 ### Construction (96-unit grid)
 
@@ -100,28 +96,29 @@ Wordmark ink: Ink `#001D2F` on light, White on dark; never blue.
 
 ## 3. Color
 
-**RoomTime Blue `#00AEFF`** is the project's main color (carried over from the original app). It is light (OKLCH L 0.72), so
-roles are split by contrast: `#00AEFF` fills tiles and is the dark-theme primary; darker blues of the same hue
-(OKLCH 240) carry text and marks on light surfaces. App roles with every UI pair: [tokens.md](tokens.md#color).
+**RoomTime Blue `#00AEFF`** is the project's main color (carried over from the original app). It is light (OKLCH
+L 0.72), so roles are split by contrast: `#00AEFF` fills tiles and is the app's primary (the app is dark-only); darker
+blues of the same hue (OKLCH 240) carry marks and text on light surfaces in brand artwork. App roles with every UI
+pair: [tokens.md](tokens.md#color).
 
 | Name | Hex | Role |
 | --- | --- | --- |
-| **RoomTime Blue** | `#00AEFF` | Icon tiles, favicon, mark on dark, dark `primary` and focus ring, light `inversePrimary` |
+| **RoomTime Blue** | `#00AEFF` | Icon tiles, favicon, mark on dark, `primary` and focus ring (`AppPalette.brandBlue`) |
 | Tile bottom | `#0695DB` | App icon gradient `#00AEFF` → `#0695DB` (top to bottom), artwork only |
 | Blue 55 | `#0083C3` | Mark on light surfaces |
-| Blue 40 | `#006A9E` | Light `primary` (text buttons, filled buttons, links) and focus ring, dark `inversePrimary` |
-| Blue 30 / 90 | `#004D74` / `#CCE9FF` | Containers |
-| **Ink** | `#001D2F` | Wordmark on light, light `onPrimaryContainer`; the passing label color on `#00AEFF` (6.98:1, not applied: the app keeps the 0.1.6 white label, tokens.md debt) |
+| Blue 40 | `#006A9E` | `inversePrimary` |
+| Blue 30 / 90 | `#004D74` / `#CCE9FF` | `primaryContainer` / `onPrimaryContainer` |
+| **Ink** | `#001D2F` | Wordmark on light; the passing label color on `#00AEFF` (6.98:1, not applied: the app keeps the 0.1.6 white label, tokens.md debt; not in `AppPalette`) |
 | **Doorlight** | `#FFB164` | Complementary accent (OKLCH hue 64 vs 240): dark `tertiary`, one highlight per screen at most |
-| Mist 10–90 | `#05131D` … `#D4E8F7` | Secondary (blue-tinted grey) |
-| Apricot 10–90 | `#361900` … `#FEDFBE` | Tertiary family |
-| Paper / Night | `#F9F9FB` / `#121212` | Light surface and dark background (`AppColors.background`); Night is the splash background |
+| Mist 10–90 | `#05131D` … `#D4E8F7` | Secondary (blue-tinted grey); the app uses Mist 20 / 30 / 80 / 90 |
+| Apricot 10–90 | `#361900` … `#FEDFBE` | Tertiary family; the app uses Apricot 20 / 30 / 90 |
+| Paper / Night | `#F9F9FB` / `#121212` | Paper: light background of brand artwork (light logo, light splash rasters). Night: dark background (`AppColors.background`) and the splash |
 
 **Accent decision.** Doorlight stays: it sits almost exactly opposite RoomTime Blue on the OKLCH hue wheel, so it
 reads as warm against the cool blue, and the apricot tertiary roles already pass AA. It leaves the mark: on
 `#00AEFF` it is only 1.38:1 (both colors are light), so it cannot carry a shape inside a blue glyph.
 
-### Contrast (WCAG 2.2, computed, enforced by `theme_contrast_test.dart`)
+### Contrast (WCAG 2.2, computed; the app pairs are pinned by `theme_contrast_test.dart`)
 
 | Pair | Ratio | Requirement |
 | --- | --- | --- |
@@ -129,9 +126,6 @@ reads as warm against the cool blue, and the apricot tertiary roles already pass
 | `#00AEFF` on `#282828` / `#333333` (dialog actions, raised containers) | 5.97 / 5.11:1 | 4.5 / 3.0 |
 | Ink `#001D2F` on `#00AEFF` (fix for the dark CTA label, not applied) | 6.98:1 | 4.5 |
 | White on `#00AEFF` (dark CTA and dialog primary labels, 0.1.6) | 2.47:1 | fails 4.5: known debt, tokens.md |
-| Blue 40 on Paper (light primary text) | 5.62:1 | 4.5 |
-| Blue 40 on `#E7E8EA` (light dialog actions) | 4.82:1 | 4.5 |
-| White on Blue 40 (light filled button) | 5.91:1 | 4.5 |
 | Blue 55 on Paper / on `#E1E2E4` (mark on light) | 3.97 / 3.22:1 | 3.0 (1.4.11) |
 | Ink on Paper (wordmark) | 16.41:1 | 4.5 |
 | White on Night (wordmark on dark) | 18.73:1 | 4.5 |
@@ -148,7 +142,7 @@ The call screen draws white glass controls over the camera feed. Text readabilit
 
 | Layer | Token | Check |
 | --- | --- | --- |
-| Scrim behind captions, name tags, the room pill, the Home veil | `videoScrim` black 60 % (`AppGlass.overlayMinAlpha`) | white text 5.74:1 over a pure white frame |
+| Scrim behind captions, name tags, the room pill, the Home veil | `videoScrim` black 60 % (`AppGlass.overlayMinAlpha`, `VideoVeil.tintAlpha`) | white text 5.74:1 over a pure white frame |
 | HUD notices / state lines | glass black 70 % / 80 % | white text 8.45 / 12.63:1 over a white frame |
 | Call controls, hang-up (0.1.6) | `LiquidBounceButton` tinted `surface` / `#FF453A` 40 % | no guaranteed ratio over bright frames (tokens.md debt) |
 
@@ -158,19 +152,20 @@ active-speaker borders together with a non-color signal.
 ## 4. Typography
 
 UI: the platform system font on native (SF Pro on Apple, Roboto on Android), as in dev-0.1.6; **Inter 4.1**
-(variable, bundled, SIL OFL 1.1) on web, served from the app's own assets. Wordmark: Inter Bold everywhere. Three
-weights in the UI: 400 body, 600 titles/labels/buttons, 700 hero titles and display. M3 sizes and line heights; Inter
-tracking on web, 0 on native except the hero titles; full scale in [tokens.md](tokens.md#typography).
+(variable, bundled, SIL OFL 1.1) on web, served from the app's own assets. Wordmark (brand artwork only): Inter Bold
+outlines. Three weights in the UI: 400 body, 600 labels/buttons, 700 hero and dialog titles. The theme `TextTheme`
+uses M3 sizes, Inter tracking on web and 0 on native except the hero titles; the 0.1.6 screens keep their own sizes;
+full scale in [tokens.md](tokens.md#typography).
 
 | Level | Style | Example |
 | --- | --- | --- |
-| Hero | headlineLarge 34/41 · 700 · −0.5 | "RoomTime" (Home title) |
-| Screen / dialog title | headlineSmall 24/32 · 600 · −0.45 | "Join a room" |
-| App bar / sheet | titleLarge 22/28 · 600 · −0.4 | "Participants" |
-| Body | bodyLarge 16/24 · 400 · −0.15 | "Share the link, talk when everyone is in." |
-| Button | titleMedium 16/24 · 600 · −0.15 | "Create room" |
+| Hero (Home title) | 34 · 700 · −0.5 phone, 28 sidebar (= headlineLarge / headlineMedium) | "RoomTime" |
+| Glass dialog title | 24 · 700 (0.1.6) | "Create Room" |
+| Room pill | titleMedium 16/24 · 600 | "Family Room" |
+| Dialog text | 15 · 400, white 70 % (0.1.6) | "Share the link, talk when everyone is in." |
+| Button | 16–17 · 600 (0.1.6) | "Create Room" |
 
-Text scales with the system setting (tested at 200 %); the logo does not (it is an image with a fixed size).
+Text scales with the system setting (tested at 200 %).
 
 ## 5. Icon set
 
@@ -212,7 +207,9 @@ Dark in every system appearance, like the app (dark-only since 0.1.6): Night `#1
 
 The `-light` splash rasters in `assets/brand/splash/` are kept for a later light mode and are not used.
 
-## 7. Launcher icon config (for the rebrand task)
+## 7. Launcher icon config
+
+Applied in `pubspec.yaml` (`flutter_launcher_icons`):
 
 ```yaml
 flutter_launcher_icons:
@@ -244,18 +241,9 @@ Display name: `CFBundleDisplayName` / `CFBundleName` = `RoomTime` (iOS, macOS), 
 
 ## 8. In the app
 
-`RoomTimeLogo` (shared widget) draws mark C as a vector from the same geometry as `src/marks/roomtime-mark-c.svg`
-(`brand_test.dart` keeps them in sync). Its blue follows the theme: `#00AEFF` in dark, Blue 55 in light.
-
-```dart
-const RoomTimeLogo()                                   // mark, 48 dp, announces "RoomTime"
-const RoomTimeLogo(size: 64, showWordmark: true)       // lockup; ink follows the theme brightness
-const RoomTimeLogo(reversed: true)                     // white mark on RoomTime Blue or on a video scrim
-const RoomTimeLogo(showWordmark: true, semanticLabel: null) // decorative, when the name is read nearby
-```
-
-The lockup ignores text scaling and scales down as a whole in tight space (`FittedBox`), so it never overflows. It is
-one semantics node (`image`, label "RoomTime").
+The app UI draws no logo: the Home title is the `appName` text in the 0.1.6 style, and the shared widgets have no
+logo widget. The mark reaches users only through the launcher icons, the splash and the web favicon and manifest
+icons (§5–§7). An in-app logo would be a new shared widget drawn from `src/marks/roomtime-mark-c.svg`.
 
 ## Assets and licenses
 
@@ -267,5 +255,5 @@ one semantics node (`image`, label "RoomTime").
 | Build tools `assets/brand/tool/*` | Original, project | Project-owned | known |
 | Former `assets/brand/logo.png` (FamilyCalls) | Original work of the author | Project-owned | retired with the rename |
 
-`assets/brand/` subfolders are not bundled into the app (`pubspec` lists only the top-level `assets/brand/`,
-which is now empty); nothing in the app needs a brand bitmap.
+`assets/brand/` is not bundled into the app (`pubspec.yaml` assets list only `assets/sounds/`); the rasters
+reach the platforms through `flutter_launcher_icons`, the copied web icons and the native splash resources.
