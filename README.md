@@ -39,9 +39,9 @@ macOS. It talks to a RoomTime backend (room API and a LiveKit SFU), which is not
 
 ## Architecture
 
-Flutter with flutter_bloc, go_router, get_it + injectable, Dio and `livekit_client`, in five layers: `app`
-(composition), `core`, `domain` (entities and ports), `data` (API client, LiveKit adapter, storage) and
-`presentation` (features, widgets, theme). Details: [docs/architecture.md](docs/architecture.md). Design:
+Flutter with flutter_bloc, go_router, get_it + injectable, Dio, `livekit_client`, freezed and json_serializable, in
+small layers: `core` (config, DI, router), `domain` (entities and ports), `data` (API client, storage, LiveKit
+adapter), `presentation` (features, widgets, theme) and `l10n`. Details: [docs/architecture.md](docs/architecture.md). Design:
 [docs/design/](docs/design/flows.md).
 
 The backend contract is [docs/api/openapi.yaml](docs/api/openapi.yaml) (OpenAPI 3.1): create, look up and join
@@ -81,7 +81,7 @@ public URLs only, never secrets.
 The same checks run in CI on every pull request:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs   # generated DI code must be up to date
+dart run build_runner build --delete-conflicting-outputs   # generated code (committed) must be up to date
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test

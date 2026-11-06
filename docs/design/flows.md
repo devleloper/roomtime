@@ -4,7 +4,7 @@
 reference: the `lib/` of dev-0.1.6, commit `3b3c480`). Sections 1-11 describe the screens as built; §12-13 hold the
 accessibility checklist and open questions.
 
-Status: v1 · 2026-11-04 · Owner: maintainers
+Status: v1 · 2026-11-06 · Owner: maintainers
 Contract: [openapi.yaml](../api/openapi.yaml) (codes, links, passwords, errors); media E2EE is planned.
 Tokens and components: [tokens.md](tokens.md).
 Copy is a **proposal** in English and Russian; the final strings live in the ARB files (`lib/l10n/`). Keys are
@@ -13,13 +13,14 @@ suggestions for the ARB names.
 ## 0. Conventions
 
 - **Window size classes**: compact < 600, medium 600–839, expanded ≥ 840 (large/extra-large follow expanded unless
-  stated). Measured with `WindowSizeClass.of(context)`.
+  stated). Measured with `WindowSizeClass` (`lib/presentation/theme/app_tokens.dart`); Home keeps the 0.1.6
+  600 dp split.
 - **Input modes**: touch, pointer (mouse/trackpad), keyboard. Hover affordances and tooltips for pointer; visible
   focus and shortcuts for keyboard. Never infer input from width: an iPad with a keyboard is "expanded + keyboard";
   a narrow desktop window is "compact + pointer + keyboard".
 - **Platforms**: Web, iOS, Android, macOS. Mobile-only controls: camera flip, earpiece/speaker routing.
-- **Theme**: dark only, as in 0.1.6 (`theme: AppTheme.dark, themeMode: ThemeMode.dark`, §14); the light schemes exist
-  for tests and a later light mode, no screen uses them.
+- **Theme**: dark only, as in 0.1.6 (`theme: AppTheme.dark, themeMode: ThemeMode.dark`, §14); `AppTheme.dark` is the
+  only theme.
 - **Navigation**: two routes only, `/` Home (create and join happen there, in glass dialogs) and `/r/:code` lobby →
   call → ended. Invite links open `/r/:code` directly. Nothing secret in routes (no password; the E2EE key lives in
   the fragment and is removed after reading).
@@ -33,15 +34,16 @@ suggestions for the ARB names.
 
 ## 1. Home
 
-Route `/` (`HomeScreen`). One screen holds everything that happens before a room: the camera backdrop, the title,
-Create Room, join by code and the recent rooms. There is no separate create route.
+Route `/` (`HomeScreen`; layouts and pieces in `features/home/widgets/`). One screen holds everything that happens
+before a room: the camera backdrop, the title, Create Room, join by code and the recent rooms. There is no separate
+create route.
 
 ### Layout
 
 | Window | Layout |
 | --- | --- |
 | Phone (touch platform and width ≤ 600) | `HomeMobileLayout`: full-screen frosted veil (`VideoVeil`) over the camera. Top row: title (`appName`, 34 bold, tracking -0.5, header) and the 48 dp glass circle for the camera preview (`LiquidBounceButton`, `toggled`). Below, in a scrolling list: the solid `#00AEFF` Create Room CTA (radius 16, 17 w600), "Join with a code" label + `JoinWithCodeField`, "Recent" label + `RecentRoomsList`. |
-| Tablet / desktop / web wider than 600 | `HomeDesktopLayout`: 380 dp frosted sidebar on the start side, the camera sharp beside it. Title 28 bold, CTA radius 12 / 16 w600, section labels 13 w600 white 70 %, the camera circle 28 dp drawn inside a 48 dp target. |
+| Tablet / desktop / web wider than 600 | `HomeDesktopLayout`: 380 dp frosted sidebar on the start side, the camera sharp beside it. Title 28 bold, CTA radius 12 / 16 w600, section labels (`HomeSectionLabel`) 13 w600 white 90 %, the camera circle 28 dp drawn inside a 48 dp target, at the end of the "Recent" label. |
 
 Text scale 200 %: the list scrolls; the title ellipsizes on one line (the full name stays in semantics).
 
@@ -66,10 +68,10 @@ A malformed invite link that opened the app redirects to Home with a one-shot Sn
 
 ### Recent rooms
 
-Rooms this device created or joined, newest first, as the plain rows of the 0.1.6 room list: name 17 w600, a
-`videocam` caption with the age (`homeJustNow`, `homeMinutesAgo`, ...) and `homeRecentHost` for rooms you host, 1 px
-dividers. A row opens `/r/:code` (the lobby). The trailing button forgets the room locally at once and shows a
-SnackBar with Undo (`homeRecentRemoved`, `homeUndo`). Empty: `homeRecentEmpty`.
+`RecentRoomsList`: rooms this device created or joined, newest first, as the plain rows of the 0.1.6 room list:
+name 17 w600, a `videocam` caption with the age (`homeJustNow`, `homeMinutesAgo`, ...) and `homeRecentHost` for rooms
+you host, 1 px dividers. A row opens `/r/:code` (the lobby). The trailing button forgets the room locally at once and
+shows a SnackBar with Undo (`homeRecentRemoved`, `homeUndo`). Empty: `homeRecentEmpty`.
 
 ### Accessibility
 
@@ -79,8 +81,8 @@ Room, code field, Join, recent rows.
 
 ## 2. Create room (dialog on Home)
 
-Create Room opens the glass dialog (`showCreateRoomDialog` → `showGlassDialog`, max width 420, title
-`homeCreateRoom`) over Home; Home stays underneath. The same dialog has two steps.
+Create Room opens the glass dialog (`showCreateRoomDialog` → `showGlassDialog` with `CreateRoomDialog`, max width 420,
+title `homeCreateRoom`) over Home; Home stays underneath. The same dialog has two steps.
 
 ### Step 1: form
 
@@ -106,8 +108,9 @@ host).
 
 ## 3. Invite
 
-`InvitePanel` is shared by the create dialog (step 2) and the in-call Invite dialog (`inviteTitle`, opened from the
-glass circle in the top corner of the call).
+`InvitePanel` (`lib/presentation/widgets/invite_panel.dart`; copy and share helpers in `invite_sharing.dart`)
+is shared by the create dialog (step 2), the lobby of a room you host (§4) and the in-call Invite dialog
+(`inviteTitle`, opened from the glass circle in the top corner of the call).
 
 - Link (`inviteLinkLabel`) with Copy link (`inviteCopyLink` → HUD pill `inviteLinkCopied`, black 70 %, live region,
   shown above an open dialog).
@@ -125,15 +128,15 @@ the create dialog. Each attempt gets fresh blocs, so Rejoin / Try again always m
 
 ### Layout
 
-The local camera fills the screen behind the veil (black with the `InitialsAvatar` when the camera is off); the
-glass dialog panel sits centred over it. Top start: Back (`roomBack`) to Home. While a link without a summary is
-looked up: a progress indicator (`roomFinding`).
+The local camera fills the screen behind the veil (`LobbyBackdrop`; black with the initials placeholder
+`AvatarTilePlaceholder` when the camera is off); the `GlassPanel` sits centred over it. Top start: Back (`roomBack`)
+to Home. While a link without a summary is looked up: a progress indicator (`roomFinding`).
 
-Panel content, top to bottom: room title (`roomTitleUnnamed` for unnamed rooms), `roomHostNotice` /
-`roomLockedNotice` when relevant, permission notices, display name (`roomNameLabel`; `roomNameRequired`,
-`roomNameTooLong`), password when the room has one (`roomPasswordLabel`, helper `roomPasswordHelper`), mic and
-camera `MediaControlButton`s (toggle state, off icon, red 40 % tint when off), then Cancel (`roomCancel`) and Join
-(`roomJoin`; `roomJoining` while connecting).
+Panel content, top to bottom: room title (`roomTitle()` in `room_title.dart`; `roomTitleUnnamed` for unnamed rooms),
+`roomHostNotice` with the `InvitePanel` (host) or `roomLockedNotice` (locked room), permission notices
+(`LobbyDeviceNotices`), display name (`roomNameLabel`; `roomNameRequired`, `roomNameTooLong`), password when the room
+has one (`roomPasswordLabel`, helper `roomPasswordHelper`), mic and camera `MediaControlButton`s (toggle state, off
+icon, red 40 % tint when off), then Cancel (`roomCancel`) and Join (`roomJoin`; `roomJoining` while connecting).
 
 ### Permissions and devices
 
@@ -162,13 +165,14 @@ field joins. Ctrl/⌘+D and +E toggle mic and camera (§11).
 
 - Video full screen: alone → own camera cover; 2 people → the other person full screen and your camera as a
   draggable PiP; 3+ → grid (`MissionControlGrid`).
-- Top: room name badge (`DynamicIslandBadge`; on iPhones with a Dynamic Island in portrait it grows out of the island, else
-  slides in). Top corners: Participants glass circle (name `roomParticipants, roomParticipantCount`) and Invite
-  glass circle (`roomInvite`).
-- Bottom: `MediaControlsRow` of round glass controls, 20 dp gaps, never below 48 dp: mic, camera, flip (touch
+- Top (`CallTopBar`): room name badge (`DynamicIslandBadge`; on iPhones with a Dynamic Island in portrait it grows
+  out of the island, else slides in). Top corners: Participants glass circle (name
+  `roomParticipants, roomParticipantCount`) and Invite glass circle (`roomInvite`).
+- Bottom: `CallControlBar`, a `MediaControlsRow` of round glass controls (60 dp, 20 dp gaps; gaps shrink to 12 and 8,
+  then the controls, never below 48 dp): mic, camera, flip (touch
   devices, `roomFlip`), speaker / earpiece (phones), hang up (`roomLeave`, `#FF453A` 40 %). Off controls are tinted
   red.
-- Alone: the glass dialog `roomAlone` / `roomAloneBody` with Copy link and Share.
+- Alone: the glass card `CallAloneCard` (`roomAlone` / `roomAloneBody`) with Copy link and Share.
 
 ### Chrome auto-hide
 
@@ -186,8 +190,8 @@ host options when you are the host (§6).
 Join/leave are HUD pills (`CallNotice`, glass black 70 %, live region): `roomJoined`, `roomJoinedMany` (bursts),
 `roomLeft`. Room changes and failed host actions are SnackBars: `roomMuted`, `roomRemoved`, `roomLocked` /
 `roomUnlocked`, `roomPasswordSet` / `roomPasswordRemoved`, `roomInviteRotated`. State lines use the HUD glass (black
-80 %, white underlined action, live region): see §8 and `roomSoundBlocked` + `roomTurnOnSound` (web autoplay),
-`roomMicUnavailable*` + Try again, `roomExpiresSoon` + Dismiss.
+80 %, `CallBannerNotice` in `CallBanners`, white underlined action, live region): see §8 and `roomSoundBlocked` +
+`roomTurnOnSound` (web autoplay), `roomMicUnavailable*` + Try again, `roomExpiresSoon` + Dismiss.
 
 ## 6. Participants and host actions
 
@@ -232,7 +236,8 @@ buttons (secondary first, primary last).
 
 ## 10. Errors
 
-Never raw exception text; every `Failure` maps through `failure_message.dart`.
+Never raw exception text; every `Failure` maps through the `FailureMessage` extension
+(`lib/l10n/failure_message.dart`).
 
 - **Full screen** (`JoinErrorView`, the same glass status frame as §9) when the lobby cannot help: room not found /
   invalid / expired / revoked share one message on purpose (`roomNotFoundTitle`); full
@@ -277,51 +282,53 @@ control shows the focus ring.
 2. Recent rooms on Home: storage of codes locally and what "remove from recent" means. Owner: maintainers.
 3. Product name: decided 2026-11-04, **RoomTime** (`appName`, the Home title).
 4. Font: decided 2026-11-04 (VIS-01): platform system font on native (SF Pro / Roboto, as 0.1.6), bundled Inter on
-   web only (no fonts.gstatic.com). The Inter files still ship in native bundles (pubspec assets are shared) for the
-   wordmark.
+   web only (no fonts.gstatic.com). The Inter files also ship in native bundles (pubspec fonts are shared); native
+   UI does not use them.
 
 ## 14. dev-0.1.6 look (source of truth)
 
 The product keeps the dev-0.1.6 FaceTime-like screens and widgets with their original API and look. Measurements,
 colors and layout per screen: the dev-0.1.6 sources (`git show 3b3c480:lib/...`). This section
 lists where each part lives and what was added to 0.1.6 for accessibility and web; sections 1-11 set content, states
-and copy. Identical on iOS, Android, macOS and web. Dark only. Preview of the shared widgets:
-`img/original-widgets.png`.
+and copy. Identical on iOS, Android, macOS and web. Dark only. `img/original-widgets.png` is a static capture of the
+0.1.6 widgets (its last panel shows the removed `CustomCard`); no test regenerates it.
 
-Shared widgets (`lib/presentation/widgets/`): `LiquidGlassContainer`, `LiquidBounceButton`,
-`CustomBounceButton`, `CustomCard`, `CustomTextField`, `GlassEffect` (the FakeGlass look without shaders),
-`GlassSurface`, `InitialsAvatar`, `RoomTimeLogo`, and the internals `AppPressable`, `FocusRing`. Room widgets of 0.1.6
-in `features/room/widgets/`: `DynamicIslandBadge`, `DraggablePipView`, `MissionControlGrid`.
-Glass dialogs: `lib/presentation/dialogs/glass_dialog.dart`. Tokens: [tokens.md](tokens.md).
+Shared widgets (`lib/presentation/widgets/`, full list in
+[tokens.md, Shared widgets](tokens.md#shared-widgets)): the 0.1.6 `LiquidGlassContainer`, `LiquidBounceButton`,
+`CustomBounceButton`, `CustomTextField`; `GlassEffect` (the FakeGlass look without shaders), `GlassSurface`,
+`GlassPanel`, `GlassHudPill`, `VideoVeil`; the glass dialogs (`glass_dialog.dart`, `glass_button.dart`,
+`glass_text_field.dart`); `InvitePanel`, `ParticipantVideo`, `InitialsAvatar`; the internals `AppPressable`,
+`FocusRing`. The 0.1.6 `CustomCard` is not part of the kit. Room widgets of 0.1.6 in `features/room/widgets/`:
+`DynamicIslandBadge`, `DraggablePipView`, `MissionControlGrid`. Tokens: [tokens.md](tokens.md).
 
 ### Home
 
 | Window | Layout |
 | --- | --- |
-| Phone (compact) | Full-screen frosted veil over the front camera (`HomeMobileLayout`, `VideoVeil`). Title with a 48 dp glass circle (camera preview), the solid `#00AEFF` "Create Room" CTA (radius 16), join with a code (`JoinWithCodeField`: `CustomTextField` + Join), recent rooms as plain rows with 1 px dividers where 0.1.6 listed public rooms. |
-| Tablet / desktop (medium+) | 380 dp frosted sidebar on the start side (`HomeDesktopLayout`), live camera sharp beside it. Title, CTA radius 12, "Rooms" label 13 w600 white 70 % with a 28 dp glass circle (48 dp target). |
+| Phone (touch platform, width ≤ 600) | Full-screen frosted veil over the front camera (`HomeMobileLayout`, `VideoVeil`). Title with a 48 dp glass circle (camera preview), the solid `#00AEFF` "Create Room" CTA (radius 16), join with a code (`JoinWithCodeField`: `CustomTextField` + Join), recent rooms as plain rows with 1 px dividers where 0.1.6 listed public rooms. |
+| Tablet / desktop (wider than 600) | 380 dp frosted sidebar on the start side (`HomeDesktopLayout`), live camera sharp beside it. Title, CTA radius 12, "Recent" label 13 w600 white 90 % with a 28 dp glass circle (48 dp target). |
 
 Camera: only under the [§1 Camera backdrop](#camera-backdrop) rules; black until the first frame; no permission or
-no camera keeps the veil on black (never a raw error over the camera, a 0.1.6 defect). Create/Join dialogs:
-`showGlassDialog` panel (blur 30, surface 50 %, white 20 % rim, radius 24, padding 24; fields inside use the same
-white 20 % rim), max width 420 (fixes the 0.1.6 full-width iPad dialog); `GlassTextField`s; `GlassButtonRow` Cancel +
-primary, stacked at large text.
+no camera keeps the veil on black (never a raw error over the camera, a 0.1.6 defect). Create dialog:
+`showGlassDialog` → `GlassPanel` (blur 30, surface 50 %, white 20 % rim, radius 24, padding 24; fields inside use the
+same white 20 % rim), max width 420 (fixes the 0.1.6 full-width iPad dialog); `GlassTextField`s; `GlassButtonRow`
+Cancel + primary, stacked at large text.
 
 ### Lobby (pre-join)
 
-Local camera behind the veil (black with the initials avatar when off), the glass panel with room name, display
-name, password when needed, mic and camera `MediaControlButton`s (toggle state + off icon, red 40 % tint when off)
-and the primary Join.
+Local camera behind the veil (black with the initials placeholder when off), the `GlassPanel` (surface 75 %) with
+room name, display name, password when needed, mic and camera `MediaControlButton`s (toggle state + off icon, red
+40 % tint when off) and the primary Join.
 
 ### Call
 
 Video full screen (1: local cover; 2: remote + draggable PiP; 3+: grid). Room name badge at the top (grows out of
-the Dynamic Island on supported iPhones in portrait, else slides in: `DynamicIslandBadge`). Bottom row of round glass controls
-(`MediaControlsRow`, 20 dp gaps, shrinking to never below 48 dp): mic, camera, flip (touch), speaker (phones),
-hang up (`#FF453A` 40 %). Participants and Invite as glass circles in the top corners. Join/leave and state lines in
-the 0.1.6 HUD glass (blur 12, white 10 % rim; black 70 % for notices, 80 % for state lines, 0.1.6 had 50 %),
-announced as live regions. Auto-hide of the chrome stays off while a screen reader is on, while keyboard focus is
-inside it, or when motion is reduced.
+the Dynamic Island on supported iPhones in portrait, else slides in: `DynamicIslandBadge`). Bottom row of round glass
+controls (`CallControlBar` → `MediaControlsRow`, 20 dp gaps, shrinking to never below 48 dp): mic, camera, flip
+(touch), speaker (phones), hang up (`#FF453A` 40 %). Participants and Invite as glass circles in the top corners.
+Join/leave and state lines in the 0.1.6 HUD glass (blur 12, white 10 % rim; black 70 % for notices (`GlassHudPill`),
+80 % for state lines, 0.1.6 had 50 %), announced as live regions. Auto-hide of the chrome stays off while a screen
+reader is on, while keyboard focus is inside it, or when motion is reduced.
 
 ### Ended and errors
 
