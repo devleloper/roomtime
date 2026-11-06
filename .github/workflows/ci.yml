@@ -37,7 +37,9 @@ jobs:
       - name: Generated code is up to date
         run: |
           dart run build_runner build --delete-conflicting-outputs
-          if ! git diff --exit-code; then
+          changed="$(git status --porcelain)"
+          if [ -n "$changed" ]; then
+            echo "$changed"
             echo "::error::Generated code is out of date: run 'flutter pub get' and 'dart run build_runner build --delete-conflicting-outputs', then commit the result"
             exit 1
           fi
