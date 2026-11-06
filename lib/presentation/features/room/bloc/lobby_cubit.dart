@@ -1,83 +1,23 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
+import 'package:roomtime/core/utils/dev_log.dart';
+import 'package:roomtime/domain/entities/room.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
+import 'package:roomtime/domain/failures/failure.dart';
+import 'package:roomtime/domain/repositories/guest_profile_repository.dart';
+import 'package:roomtime/domain/repositories/room_repository.dart';
+import 'package:roomtime/domain/services/media_preview.dart';
 
-import '../../../../domain/entities/room.dart';
-import '../../../../domain/entities/room_code.dart';
-import '../../../../domain/failures/failure.dart';
-import '../../../../domain/repositories/i_guest_profile_repository.dart';
-import '../../../../domain/repositories/i_room_repository.dart';
-import '../../../../domain/services/media_preview.dart';
+part 'lobby_state.dart';
+part 'lobby_cubit.freezed.dart';
 
-enum LobbyStatus { loading, ready, notFound, failed }
-
-final class LobbyState extends Equatable {
-  const LobbyState({
-    this.status = LobbyStatus.loading,
-    this.summary,
-    this.isHost = false,
-    this.displayName = '',
-    this.failure,
-    this.preview = const MediaPreviewState(),
-  });
-
-  final LobbyStatus status;
-  final RoomSummary? summary;
-
-  /// This device holds the owner token: joins as host.
-  final bool isHost;
-
-  /// The stored name, used to prefill the name field.
-  final String displayName;
-
-  /// Why the lookup failed ([LobbyStatus.failed]).
-  final Failure? failure;
-  final MediaPreviewState preview;
-
-  LobbyState copyWith({
-    LobbyStatus? status,
-    RoomSummary? summary,
-    bool? isHost,
-    String? displayName,
-    Failure? failure,
-    MediaPreviewState? preview,
-  }) => LobbyState(
-    status: status ?? this.status,
-    summary: summary ?? this.summary,
-    isHost: isHost ?? this.isHost,
-    displayName: displayName ?? this.displayName,
-    failure: failure,
-    preview: preview ?? this.preview,
-  );
-
-  @override
-  List<Object?> get props => [
-    status,
-    summary,
-    isHost,
-    displayName,
-    failure,
-    preview,
-  ];
-}
-
-/// Pre-join: finds the room, knows whether this device is the host and owns
-/// the camera preview. Joining itself is `RoomBloc`'s job; the lobby releases
-/// the camera first so it is never opened twice.
 @injectable
 class LobbyCubit extends Cubit<LobbyState> {
-  LobbyCubit(this._rooms, this._profiles, this._preview)
-    : super(const LobbyState()) {
-    _previewSubscription = _preview.states.listen((preview) {
-      if (!isClosed) emit(state.copyWith(preview: preview));
-    });
-  }
-
-  final IRoomRepository _rooms;
-  final IGuestProfileRepository _profiles;
+  final RoomRepository _rooms;
+  final GuestProfileRepository _profiles;
   final MediaPreview _preview;
   late final StreamSubscription<MediaPreviewState> _previewSubscription;
 
@@ -85,10 +25,19 @@ class LobbyCubit extends Cubit<LobbyState> {
   bool _camera = true;
   bool _microphone = true;
 
-  bool get canOpenSettings => _preview.canOpenSettings;
+  LobbyCubit(this._rooms, this._profiles, this._preview)
+    : super(const LobbyState()) {
+    _previewSubscription = _preview.states.listen((preview) {
+      if (!isClosed) {
+        emit(state.copyWith(preview: preview));
+      }
+    });
+  }
 
-  /// Looks the room up (skipped when Home already did) and starts the
-  /// preview with the given device choices.
+  bool get canOpenSettings {
+    return _preview.canOpenSettings;
+  }
+
   Future<void> start(
     RoomCode code, {
     RoomSummary? summary,
@@ -98,54 +47,55 @@ class LobbyCubit extends Cubit<LobbyState> {
     _code = code;
     _camera = camera;
     _microphone = microphone;
-    emit(state.copyWith(status: LobbyStatus.loading));
+    emit(state.copyWith(status: LobbyStatus.loading, failure: null));
     try {
       final profile = await _profiles.load();
       final isHost = await _rooms.isOwner(code);
       final found = summary ?? await _rooms.lookup(code);
-      if (isClosed) return;
+      if (isClosed) {
+        return;
+      }
       emit(
         state.copyWith(
           status: LobbyStatus.ready,
           summary: found,
           isHost: isHost,
           displayName: profile.displayName,
+          failure: null,
         ),
       );
-    } on RoomNotFoundFailure {
-      if (!isClosed) emit(state.copyWith(status: LobbyStatus.notFound));
-      return;
-    } on InvalidCodeFailure {
-      if (!isClosed) emit(state.copyWith(status: LobbyStatus.notFound));
-      return;
     } on Failure catch (failure) {
-      if (!isClosed) {
-        emit(state.copyWith(status: LobbyStatus.failed, failure: failure));
-      }
+      _emitLookupFailure(failure);
       return;
     } on Object catch (error, stackTrace) {
-      developer.log(
+      devLog(
         'Lobby lookup failed',
         name: 'LobbyCubit',
         error: error,
         stackTrace: stackTrace,
       );
-      if (!isClosed) {
-        emit(
-          state.copyWith(
-            status: LobbyStatus.failed,
-            failure: const UnknownFailure(),
-          ),
-        );
-      }
+      _emitLookupFailure(const UnknownFailure());
       return;
     }
     await resumeDevices();
   }
 
+  void _emitLookupFailure(Failure failure) {
+    if (isClosed) {
+      return;
+    }
+    if (failure is RoomNotFoundFailure || failure is InvalidCodeFailure) {
+      emit(state.copyWith(status: LobbyStatus.notFound, failure: null));
+    } else {
+      emit(state.copyWith(status: LobbyStatus.failed, failure: failure));
+    }
+  }
+
   Future<void> retry() async {
     final code = _code;
-    if (code == null) return;
+    if (code == null) {
+      return;
+    }
     await start(code, camera: _camera, microphone: _microphone);
   }
 
@@ -159,22 +109,29 @@ class LobbyCubit extends Cubit<LobbyState> {
     await _preview.setMicrophoneEnabled(enabled);
   }
 
-  Future<void> requestAccess() => _preview.requestAccess();
+  Future<void> requestAccess() {
+    return _preview.requestAccess();
+  }
 
-  Future<void> openSettings() => _preview.openSettings();
+  Future<void> openSettings() {
+    return _preview.openSettings();
+  }
 
-  /// Re-reads device access, e.g. back from the system settings (CR4-1).
   Future<void> refreshAccess() async {
-    if (isClosed) return;
+    if (isClosed) {
+      return;
+    }
     await _preview.refreshAccess();
   }
 
-  /// Stops the camera before the call opens its own.
-  Future<void> releaseDevices() => _preview.release();
+  Future<void> releaseDevices() {
+    return _preview.release();
+  }
 
-  /// Restarts the preview, e.g. after a join failed with a wrong password.
   Future<void> resumeDevices() async {
-    if (isClosed) return;
+    if (isClosed) {
+      return;
+    }
     await _preview.start(camera: _camera, microphone: _microphone);
   }
 

@@ -1,22 +1,21 @@
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:roomtime/domain/entities/room.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
 
-import 'room.dart';
-import 'room_code.dart';
+part 'recent_room.freezed.dart';
+part 'recent_room.g.dart';
 
-/// A room this device created or joined; stored locally only.
-final class RecentRoom extends Equatable {
-  const RecentRoom({
-    required this.code,
-    this.name,
-    required this.role,
-    required this.lastJoined,
-  });
+@freezed
+abstract class RecentRoom with _$RecentRoom {
+  const factory RecentRoom({
+    @RoomCodeConverter() required RoomCode code,
+    String? name,
+    required RoomRole role,
+    @JsonKey(toJson: _utcIso) required DateTime lastJoined,
+  }) = _RecentRoom;
 
-  final RoomCode code;
-  final String? name;
-  final RoomRole role;
-  final DateTime lastJoined;
-
-  @override
-  List<Object?> get props => [code, name, role, lastJoined];
+  factory RecentRoom.fromJson(Map<String, dynamic> json) =>
+      _$RecentRoomFromJson(json);
 }
+
+String _utcIso(DateTime value) => value.toUtc().toIso8601String();

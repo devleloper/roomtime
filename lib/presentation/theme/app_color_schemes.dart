@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:roomtime/presentation/theme/app_colors.dart';
 
-import 'app_palette.dart';
-
-/// Color schemes built from [AppPalette].
-///
-/// Every role is set explicitly (no `fromSeed`) so contrast is predictable and
-/// testable. Ratios: `docs/design/tokens.md`.
 abstract final class AppColorSchemes {
-  /// The dev-0.1.6 dark look (`ColorScheme.dark(primary: #00AEFF, surface:
-  /// #1E1E1E, error: #FF453A)`), with every role set explicitly.
   static const ColorScheme dark = ColorScheme(
     brightness: Brightness.dark,
     primary: AppPalette.brandBlue,
-    // White on blue as in 0.1.6 (2.47:1, below WCAG 1.4.3; recorded in
-    // tokens.md "Known contrast debt"). AppPalette.ink gives 6.98:1.
     onPrimary: AppPalette.neutral100,
     primaryContainer: AppPalette.blue30,
     onPrimaryContainer: AppPalette.blue90,
@@ -48,81 +39,10 @@ abstract final class AppColorSchemes {
     scrim: AppPalette.neutral0,
     surfaceTint: Colors.transparent,
   );
-
-  static const ColorScheme light = ColorScheme(
-    brightness: Brightness.light,
-    primary: AppPalette.blue40,
-    onPrimary: AppPalette.neutral100,
-    primaryContainer: AppPalette.blue90,
-    onPrimaryContainer: AppPalette.ink,
-    secondary: AppPalette.mist40,
-    onSecondary: AppPalette.neutral100,
-    secondaryContainer: AppPalette.mist90,
-    onSecondaryContainer: AppPalette.mist10,
-    tertiary: AppPalette.apricot40,
-    onTertiary: AppPalette.neutral100,
-    tertiaryContainer: AppPalette.apricot90,
-    onTertiaryContainer: AppPalette.apricot10,
-    error: AppPalette.red40,
-    onError: AppPalette.neutral100,
-    errorContainer: AppPalette.red90,
-    onErrorContainer: AppPalette.red10,
-    surface: AppPalette.slate98,
-    onSurface: AppPalette.slate10,
-    onSurfaceVariant: AppPalette.slate29,
-    surfaceDim: AppPalette.slate88,
-    surfaceBright: AppPalette.slate98,
-    surfaceContainerLowest: AppPalette.neutral100,
-    surfaceContainerLow: AppPalette.slate96,
-    surfaceContainer: AppPalette.slate93,
-    surfaceContainerHigh: AppPalette.slate90,
-    surfaceContainerHighest: AppPalette.slate88,
-    outline: AppPalette.slate47,
-    outlineVariant: AppPalette.slate79,
-    inverseSurface: AppPalette.slate19,
-    onInverseSurface: AppPalette.slate95,
-    inversePrimary: AppPalette.brandBlue,
-    shadow: AppPalette.neutral0,
-    scrim: AppPalette.neutral0,
-    surfaceTint: Colors.transparent,
-  );
 }
 
-/// Roles that [ColorScheme] does not have. Read with
-/// `AppSemanticColors.of(context)`.
 @immutable
 class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
-  const AppSemanticColors({
-    required this.danger,
-    required this.onDanger,
-    required this.warningContainer,
-    required this.onWarningContainer,
-    required this.focusRing,
-    required this.videoScrim,
-    required this.onVideoScrim,
-    required this.videoGlass,
-  });
-
-  /// Fill of destructive actions: leave call, end for everyone, remove.
-  final Color danger;
-  final Color onDanger;
-
-  /// Reconnecting / degraded-connection banner.
-  final Color warningContainer;
-  final Color onWarningContainer;
-
-  /// Keyboard focus indicator, drawn outside the control with a gap.
-  final Color focusRing;
-
-  /// Minimum backdrop for any text or control drawn over video.
-  final Color videoScrim;
-  final Color onVideoScrim;
-
-  /// Soft white for glass over video (pressed glare base, 20 %). The glass
-  /// rim itself is the specular stroke of `GlassEffect`; content on glass
-  /// uses [onVideoScrim]. Hang-up uses the opaque [danger] fill.
-  final Color videoGlass;
-
   static const AppSemanticColors dark = AppSemanticColors(
     danger: AppPalette.danger,
     onDanger: AppPalette.neutral100,
@@ -134,23 +54,32 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     videoGlass: AppPalette.videoGlass,
   );
 
-  static const AppSemanticColors light = AppSemanticColors(
-    danger: AppPalette.danger,
-    onDanger: AppPalette.neutral100,
-    warningContainer: AppPalette.amber90,
-    onWarningContainer: AppPalette.amber10,
-    focusRing: AppPalette.blue40,
-    videoScrim: AppPalette.videoScrim,
-    onVideoScrim: AppPalette.neutral100,
-    videoGlass: AppPalette.videoGlass,
-  );
+  final Color danger;
+  final Color onDanger;
 
-  /// The extension of the ambient theme; falls back to the set matching the
-  /// theme brightness when a test or a foreign theme does not register it.
+  final Color warningContainer;
+  final Color onWarningContainer;
+
+  final Color focusRing;
+
+  final Color videoScrim;
+  final Color onVideoScrim;
+
+  final Color videoGlass;
+
+  const AppSemanticColors({
+    required this.danger,
+    required this.onDanger,
+    required this.warningContainer,
+    required this.onWarningContainer,
+    required this.focusRing,
+    required this.videoScrim,
+    required this.onVideoScrim,
+    required this.videoGlass,
+  });
+
   static AppSemanticColors of(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.extension<AppSemanticColors>() ??
-        (theme.brightness == Brightness.dark ? dark : light);
+    return Theme.of(context).extension<AppSemanticColors>() ?? dark;
   }
 
   @override

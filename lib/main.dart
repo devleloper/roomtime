@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-
-import 'core/di/injection.dart';
-import 'app/app_router.dart';
-import 'presentation/theme/theme.dart';
-import 'l10n/l10n.dart';
+import 'package:roomtime/core/di/injection.dart';
+import 'package:roomtime/core/router/app_router.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // Invite links are `https://<host>/r/<code>`; the web build reads the path,
-  // so the edge must serve index.html for unknown paths.
+  // Use /r/<code> paths instead of hash URLs for deep links.
   usePathUrlStrategy();
   configureDependencies();
   runApp(const RoomTimeApp());
@@ -20,10 +18,7 @@ class RoomTimeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FaceTime-style: every screen sits on the camera or black (flows.md §14).
     return MaterialApp.router(
-      // Brand name, never translated; the locale follows the system and
-      // falls back to English (template) for unsupported languages.
       onGenerateTitle: (context) => context.l10n.appName,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

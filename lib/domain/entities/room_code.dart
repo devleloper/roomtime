@@ -1,23 +1,24 @@
-import 'package:equatable/equatable.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-/// A room invitation code (room API v1): 10 letters from [alphabet], shown as
-/// `abc-defg-hjk`. Instances are always normalized and valid.
-final class RoomCode extends Equatable {
-  const RoomCode._(this.value);
+part 'room_code.freezed.dart';
 
-  /// 23 lowercase letters without `i`, `l` and `o`.
+@freezed
+abstract class RoomCode with _$RoomCode {
+  // Excludes i, l, o (visual ambiguity); matches the API RoomCode pattern.
   static const alphabet = 'abcdefghjkmnpqrstuvwxyz';
   static const length = 10;
 
   static final _invitePath = RegExp(r'(?:^|/)r/([^/?#]+)');
   static final _separators = RegExp(r'[\s-]');
 
-  /// The normalized code: 10 lowercase letters, no separators.
-  final String value;
+  const RoomCode._();
 
-  /// Parses a bare code (any case, spaces and dashes allowed) or a full invite
-  /// link (`https://host/r/<code>`, `/r/<code>`, with optional query or
-  /// fragment). Returns `null` when the input is not a valid code.
+  const factory RoomCode._internal(String value) = _RoomCode;
+
+  String get display {
+    return '${value.substring(0, 3)}-${value.substring(3, 7)}-${value.substring(7)}';
+  }
+
   static RoomCode? tryParse(String input) {
     var candidate = input.trim();
     final link = _invitePath.firstMatch(candidate);
@@ -25,26 +26,42 @@ final class RoomCode extends Equatable {
       try {
         candidate = Uri.decodeComponent(link.group(1)!);
       } on ArgumentError {
-        return null; // Broken percent-escape, e.g. a link cut by a messenger.
+        return null;
       } on FormatException {
-        return null; // Valid escape, invalid UTF-8 (`%FF`).
+        return null;
       }
     }
+
     final normalized = candidate.toLowerCase().replaceAll(_separators, '');
-    if (normalized.length != length) return null;
-    for (final unit in normalized.split('')) {
-      if (!alphabet.contains(unit)) return null;
+    if (normalized.length != length) {
+      return null;
     }
-    return RoomCode._(normalized);
+
+    for (final unit in normalized.split('')) {
+      if (!alphabet.contains(unit)) {
+        return null;
+      }
+    }
+
+    return RoomCode._internal(normalized);
   }
-
-  /// Display form `abc-defg-hjk`.
-  String get display =>
-      '${value.substring(0, 3)}-${value.substring(3, 7)}-${value.substring(7)}';
-
-  @override
-  List<Object?> get props => [value];
 
   @override
   String toString() => display;
+}
+
+class RoomCodeConverter implements JsonConverter<RoomCode, String> {
+  const RoomCodeConverter();
+
+  @override
+  RoomCode fromJson(String json) {
+    final code = RoomCode.tryParse(json);
+    if (code != null) {
+      return code;
+    }
+    throw FormatException('Invalid room code', json);
+  }
+
+  @override
+  String toJson(RoomCode object) => object.value;
 }

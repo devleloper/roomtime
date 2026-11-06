@@ -1,32 +1,55 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
-
-import '../../../../core/log/dev_log.dart';
-import '../../../../core/time/clock.dart';
-import '../../../../domain/entities/call_snapshot.dart';
-import '../../../../domain/entities/room.dart';
-import '../../../../domain/entities/room_code.dart';
-import '../../../../domain/failures/failure.dart';
-import '../../../../domain/repositories/i_guest_profile_repository.dart';
-import '../../../../domain/repositories/i_room_repository.dart';
-import '../../../../domain/services/call_session.dart';
-import '../../../../domain/services/i_audio_service.dart';
-import '../../../shared/platform.dart';
+import 'package:roomtime/core/utils/clock.dart';
+import 'package:roomtime/core/utils/dev_log.dart';
+import 'package:roomtime/core/utils/platform.dart';
+import 'package:roomtime/domain/entities/call_snapshot.dart';
+import 'package:roomtime/domain/entities/room.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
+import 'package:roomtime/domain/failures/failure.dart';
+import 'package:roomtime/domain/repositories/guest_profile_repository.dart';
+import 'package:roomtime/domain/repositories/room_repository.dart';
+import 'package:roomtime/domain/services/audio_service.dart';
+import 'package:roomtime/domain/services/call_session.dart';
 
 part 'room_event.dart';
 part 'room_state.dart';
+part 'room_bloc.freezed.dart';
 
-/// One call: joins through the API, drives the [CallSession] and maps its
-/// snapshots to [RoomState]. Closing the bloc leaves the call and releases
-/// camera and microphone, also when it is closed while still connecting.
 @injectable
 class RoomBloc extends Bloc<RoomEvent, RoomState> {
+  static const expiryWarningLead = Duration(minutes: 10);
+
+  final RoomRepository _rooms;
+  final GuestProfileRepository _profiles;
+  final CallSession _session;
+  final AudioService _audio;
+  final Clock _clock;
+  final bool _pauseCameraInBackground;
+  final bool _startAudioOnJoin;
+
+  final _effects = StreamController<RoomEffect>.broadcast();
+  late final StreamSubscription<CallSnapshot> _callSubscription;
+
+  RoomJoin? _join;
+  RoomInfo? _room;
+  bool _expiresSoon = false;
+  Timer? _expiryTimer;
+  CallSnapshot _lastCall = const CallSnapshot();
+
+  // Baseline for join/leave notices; ignores temporary clears during LiveKit reconnects.
+  CallSnapshot? _lastConnected;
+  bool _leaving = false;
+
+  // LiveKit disconnect often arrives before the HTTP delete response returns.
+  bool _endingForAll = false;
+  bool _cameraPausedInBackground = false;
+
   RoomBloc(
     this._rooms,
     this._profiles,
@@ -59,67 +82,39 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     );
   }
 
-  final IRoomRepository _rooms;
-  final IGuestProfileRepository _profiles;
-  final CallSession _session;
-  final IAudioService _audio;
-  final Clock _clock;
-  final bool _pauseCameraInBackground;
-  final bool _startAudioOnJoin;
+  Stream<RoomEffect> get effects {
+    return _effects.stream;
+  }
 
-  /// How long before `expiresAt` the host is warned.
-  static const expiryWarningLead = Duration(minutes: 10);
+  bool get canSwitchAudioOutput {
+    return _session.canSwitchAudioOutput;
+  }
 
-  final _effects = StreamController<RoomEffect>.broadcast();
-  late final StreamSubscription<CallSnapshot> _callSubscription;
-
-  RoomJoin? _join;
-
-  /// The room as this call knows it; changes with host settings and rotation.
-  RoomInfo? _room;
-  bool _expiresSoon = false;
-  Timer? _expiryTimer;
-  CallSnapshot _lastCall = const CallSnapshot();
-
-  /// Last snapshot with a live connection: the baseline for join/leave
-  /// notices. Reconnecting and disconnected snapshots may list nobody (a
-  /// full LiveKit restart clears the remote participants), so they are never
-  /// compared.
-  CallSnapshot? _lastConnected;
-  bool _leaving = false;
-
-  /// "End for everyone" is in flight. The server deletes the media room
-  /// before it answers, so LiveKit's disconnect usually arrives first and
-  /// must already read as "you ended it".
-  bool _endingForAll = false;
-  bool _cameraPausedInBackground = false;
-
-  /// One-shot UI effects (participant joined/left, host action results,
-  /// failed commands).
-  Stream<RoomEffect> get effects => _effects.stream;
-
-  /// Whether to offer the speaker / earpiece control.
-  bool get canSwitchAudioOutput => _session.canSwitchAudioOutput;
-
-  static EventTransformer<E> _sequential<E>() =>
-      (events, mapper) => events.asyncExpand(mapper);
+  static EventTransformer<E> _sequential<E>() {
+    return (events, mapper) => events.asyncExpand(mapper);
+  }
 
   Future<void> _onJoin(RoomJoinRequested event, Emitter<RoomState> emit) async {
-    if (_leaving || state is RoomConnecting || state is RoomInCall) return;
+    if (_leaving || state is RoomConnecting || state is RoomInCall) {
+      return;
+    }
     emit(RoomConnecting(event.code));
     try {
       final name = event.displayName;
       final guest = name == null
           ? await _profiles.load()
           : await _profiles.updateDisplayName(name);
-      if (_leaving) return;
+      if (_leaving) {
+        return;
+      }
       final join = await _rooms.join(
         event.code,
         guest: guest,
         password: event.password,
       );
-      // Left while the API call was running: never open the media session.
-      if (_leaving) return;
+      if (_leaving) {
+        return;
+      }
       _join = join;
       _room = join.room;
       await _session.connect(
@@ -130,11 +125,19 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
           cameraEnabled: event.cameraEnabled,
         ),
       );
-      if (_leaving) return;
-      // Web: the Join tap is the user gesture the autoplay policy needs.
-      if (_startAudioOnJoin) await _tryStartAudio();
-      if (_leaving) return;
-      if (join.role == RoomRole.host) _scheduleExpiryWarning(join.room);
+      if (_leaving) {
+        return;
+      }
+      // Web browsers require a user gesture to unlock audio playback.
+      if (_startAudioOnJoin) {
+        await _tryStartAudio();
+      }
+      if (_leaving) {
+        return;
+      }
+      if (join.role == RoomRole.host) {
+        _scheduleExpiryWarning(join.room);
+      }
       _emitForCall(_session.snapshot, emit);
     } on ArgumentError {
       _fail(
@@ -160,14 +163,16 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     try {
       await _session.startAudio();
     } on Object catch (error) {
-      developer.log('startAudio failed: $error', name: 'RoomBloc');
+      devLog('startAudio failed: $error', name: 'RoomBloc', error: error);
     }
   }
 
   void _scheduleExpiryWarning(RoomInfo room) {
     final expiresAt = room.expiresAt;
     final now = _clock.now();
-    if (!now.isBefore(expiresAt)) return;
+    if (!now.isBefore(expiresAt)) {
+      return;
+    }
     final delay = expiresAt.subtract(expiryWarningLead).difference(now);
     _expiryTimer?.cancel();
     _expiryTimer = Timer(
@@ -177,14 +182,17 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   }
 
   void _onExpiryWarning(_RoomExpiryWarningDue event, Emitter<RoomState> emit) {
-    if (_leaving) return;
+    if (_leaving) {
+      return;
+    }
     _expiresSoon = true;
-    final current = state;
-    if (current is RoomInCall) _emitForCall(current.call, emit);
+    _refreshInCall(emit);
   }
 
   void _fail(RoomCode code, Failure failure, Emitter<RoomState> emit) {
-    if (_leaving) return;
+    if (_leaving) {
+      return;
+    }
     _join = null;
     _room = null;
     emit(RoomFailed(code: code, failure: failure));
@@ -194,7 +202,9 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     RoomLeaveRequested event,
     Emitter<RoomState> emit,
   ) async {
-    if (_leaving) return;
+    if (_leaving) {
+      return;
+    }
     _leaving = true;
     _expiryTimer?.cancel();
     final code = _room?.code;
@@ -205,19 +215,27 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   void _onCallUpdated(_RoomCallUpdated event, Emitter<RoomState> emit) {
     final call = event.snapshot;
     _lastCall = call;
-    if (_leaving || _join == null) return;
+    if (_leaving || _join == null) {
+      return;
+    }
     if (call.connection == CallConnection.connected) {
       final baseline = _lastConnected;
-      if (baseline != null) _announceParticipantChanges(baseline, call);
+      if (baseline != null) {
+        _announceParticipantChanges(baseline, call);
+      }
       _lastConnected = call;
     }
-    if (state is RoomInCall) _emitForCall(call, emit);
+    if (state is RoomInCall) {
+      _emitForCall(call, emit);
+    }
   }
 
   void _emitForCall(CallSnapshot call, Emitter<RoomState> emit) {
     final join = _join;
     final room = _room;
-    if (join == null || room == null) return;
+    if (join == null || room == null) {
+      return;
+    }
     switch (call.connection) {
       case CallConnection.connected:
         emit(
@@ -240,19 +258,13 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       case CallConnection.disconnected:
         _leaving = true;
         _expiryTimer?.cancel();
-        // Only a room-ended disconnect is ours; a dropped network while
-        // the request is in flight stays connectionLost (CR4-2).
         final endedByUs =
             _endingForAll &&
             (call.endReason == CallEndReason.roomDeleted ||
                 call.endReason == CallEndReason.endedByHost);
         emit(
           endedByUs
-              ? RoomEnded(
-                  CallEndReason.endedByHost,
-                  code: room.code,
-                  endedByYou: true,
-                )
+              ? _endedByYou(room.code)
               : RoomEnded(_endReason(call.endReason), code: room.code),
         );
       case CallConnection.idle || CallConnection.connecting:
@@ -260,14 +272,11 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     }
   }
 
-  /// LiveKit reports "room deleted" both when the host ends the call and when
-  /// the room expires; before `expiresAt` only the host can end it.
-  ///
-  /// After `expiresAt` the server also removes anyone who fully reconnects,
-  /// and owner endpoints no longer work, so a removal then means
-  /// "expired", not "the host removed you".
   CallEndReason _endReason(CallEndReason? reason) {
-    if (reason == null) return CallEndReason.connectionLost;
+    if (reason == null) {
+      return CallEndReason.connectionLost;
+    }
+    // LiveKit reports roomDeleted both when the host ends the call and when the room expires.
     final expiresAt = _room?.expiresAt ?? _join?.room.expiresAt;
     final expired = expiresAt != null && !_clock.now().isBefore(expiresAt);
     return switch (reason) {
@@ -294,40 +303,55 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   Future<void> _onMicrophone(
     RoomMicrophoneToggled event,
     Emitter<RoomState> _,
-  ) => _command(() => _session.setMicrophoneEnabled(event.enabled));
+  ) {
+    return _command(() => _session.setMicrophoneEnabled(event.enabled));
+  }
 
   Future<void> _onCamera(RoomCameraToggled event, Emitter<RoomState> _) {
     _cameraPausedInBackground = false;
     return _command(() => _session.setCameraEnabled(event.enabled));
   }
 
-  Future<void> _onFlip(RoomCameraFlipped event, Emitter<RoomState> _) =>
-      _command(_session.flipCamera);
+  Future<void> _onFlip(RoomCameraFlipped event, Emitter<RoomState> _) {
+    return _command(_session.flipCamera);
+  }
 
   Future<void> _onSpeakerphone(
     RoomSpeakerphoneToggled event,
     Emitter<RoomState> _,
-  ) => _command(() => _session.setSpeakerphoneOn(event.on));
+  ) {
+    return _command(() => _session.setSpeakerphoneOn(event.on));
+  }
 
   Future<void> _onStartAudio(
     RoomAudioPlaybackStartRequested event,
     Emitter<RoomState> _,
-  ) => _command(_session.startAudio);
+  ) {
+    return _command(_session.startAudio);
+  }
 
   Future<void> _onLifecycle(
     RoomAppLifecycleChanged event,
     Emitter<RoomState> _,
   ) async {
-    if (!_pauseCameraInBackground || _leaving) return;
+    if (!_pauseCameraInBackground || _leaving) {
+      return;
+    }
     final current = state;
-    if (current is! RoomInCall) return;
+    if (current is! RoomInCall) {
+      return;
+    }
     switch (event.state) {
       case AppLifecycleState.hidden || AppLifecycleState.paused:
-        if (_cameraPausedInBackground || !current.call.cameraEnabled) return;
+        if (_cameraPausedInBackground || !current.call.cameraEnabled) {
+          return;
+        }
         _cameraPausedInBackground = true;
         await _command(() => _session.setCameraEnabled(false));
       case AppLifecycleState.resumed:
-        if (!_cameraPausedInBackground) return;
+        if (!_cameraPausedInBackground) {
+          return;
+        }
         _cameraPausedInBackground = false;
         await _command(() => _session.setCameraEnabled(true));
       case AppLifecycleState.inactive || AppLifecycleState.detached:
@@ -354,18 +378,17 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       _emitEffect(RoomActionFailedEffect(failure));
       return;
     }
-    // The media room's disconnect already ended the call (see above).
-    if (state is RoomEnded) return;
+    if (state is RoomEnded) {
+      return;
+    }
     _leaving = true;
     _expiryTimer?.cancel();
     await _session.leave();
-    emit(
-      RoomEnded(
-        CallEndReason.endedByHost,
-        code: current.room.code,
-        endedByYou: true,
-      ),
-    );
+    emit(_endedByYou(current.room.code));
+  }
+
+  RoomEnded _endedByYou(RoomCode code) {
+    return RoomEnded(CallEndReason.endedByHost, code: code, endedByYou: true);
   }
 
   Future<void> _onMute(
@@ -380,7 +403,9 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         trackSid: event.trackSid,
       ),
     );
-    if (done) _emitEffect(ParticipantMutedEffect(target));
+    if (done) {
+      _emitEffect(ParticipantMutedEffect(target));
+    }
   }
 
   Future<void> _onRemove(
@@ -395,12 +420,17 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         ban: event.ban,
       ),
     );
-    if (done) _emitEffect(ParticipantRemovedEffect(target));
+    if (done) {
+      _emitEffect(ParticipantRemovedEffect(target));
+    }
   }
 
   CallParticipant? _participant(String identity) {
-    for (final p in (_lastConnected ?? _lastCall).participants) {
-      if (p.identity == identity) return p;
+    final snapshot = _lastConnected ?? _lastCall;
+    for (final participant in snapshot.participants) {
+      if (participant.identity == identity) {
+        return participant;
+      }
     }
     return null;
   }
@@ -409,7 +439,9 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     final done = await _hostCommand(
       (code) => _rooms.updateRoom(code, RoomPatch(locked: event.locked)),
     );
-    if (!done || _leaving) return;
+    if (!done || _leaving) {
+      return;
+    }
     _room = _room?.copyWith(locked: event.locked);
     _refreshInCall(emit);
     _emitEffect(
@@ -432,7 +464,9 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         ),
       ),
     );
-    if (!done || _leaving) return;
+    if (!done || _leaving) {
+      return;
+    }
     _room = _room?.copyWith(passwordRequired: password != null);
     _refreshInCall(emit);
     _emitEffect(
@@ -448,12 +482,23 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     RoomInviteRotateRequested event,
     Emitter<RoomState> emit,
   ) async {
-    RotatedCode? rotated;
-    final done = await _hostCommand((code) async {
-      rotated = await _rooms.rotateCode(code);
-    });
-    final next = rotated;
-    if (!done || next == null || _leaving) return;
+    final current = state;
+    if (current is! RoomInCall || !current.isHost || _leaving) {
+      return;
+    }
+
+    final RotatedCode next;
+    try {
+      next = await _rooms.rotateCode(current.room.code);
+    } on Failure catch (failure) {
+      devLog('Room command failed: $failure', name: 'RoomBloc', error: failure);
+      _emitEffect(RoomActionFailedEffect(failure));
+      return;
+    }
+
+    if (_leaving) {
+      return;
+    }
     _room = _room?.copyWith(code: next.code, inviteUrl: next.inviteUrl);
     _refreshInCall(emit);
     _emitEffect(
@@ -463,30 +508,37 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
 
   void _refreshInCall(Emitter<RoomState> emit) {
     final current = state;
-    if (current is RoomInCall) _emitForCall(current.call, emit);
+    if (current is RoomInCall) {
+      _emitForCall(current.call, emit);
+    }
   }
 
-  /// Runs an owner action; true when it succeeded.
   Future<bool> _hostCommand(Future<void> Function(RoomCode code) action) async {
     final current = state;
-    if (current is! RoomInCall || !current.isHost) return false;
+    if (current is! RoomInCall || !current.isHost) {
+      return false;
+    }
     return _command(() => action(current.room.code));
   }
 
   Future<bool> _command(Future<void> Function() action) async {
-    if (state is! RoomInCall || _leaving) return false;
+    if (state is! RoomInCall || _leaving) {
+      return false;
+    }
     try {
       await action();
       return true;
     } on Failure catch (failure) {
-      developer.log('Room command failed: $failure', name: 'RoomBloc');
+      devLog('Room command failed: $failure', name: 'RoomBloc', error: failure);
       _emitEffect(RoomActionFailedEffect(failure));
       return false;
     }
   }
 
   void _emitEffect(RoomEffect effect) {
-    if (!_effects.isClosed) _effects.add(effect);
+    if (!_effects.isClosed) {
+      _effects.add(effect);
+    }
   }
 
   @override

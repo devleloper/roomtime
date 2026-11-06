@@ -1,18 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:roomtime/domain/entities/call_snapshot.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/features/room/widgets/draggable_pip_view.dart';
+import 'package:roomtime/presentation/features/room/widgets/mission_control_grid.dart';
+import 'package:roomtime/presentation/features/room/widgets/participant_tile.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
 
-import '../../../../domain/entities/call_snapshot.dart';
-import '../../../theme/theme.dart';
-import 'draggable_pip_view.dart';
-import 'mission_control_grid.dart';
-import 'participant_tile.dart';
-import '../../../../l10n/l10n.dart';
-
-/// Picks the call layout by participant count (flows.md §5): self alone,
-/// 1:1 with a draggable PiP (tap swaps, pinch zooms the large tile), or the
-/// animated grid.
 class CallVideoLayout extends StatefulWidget {
+  final CallSnapshot call;
+  final bool isHost;
+
+  final VoidCallback onBackgroundTap;
+
+  final ValueChanged<CallParticipant>? onParticipantLongPress;
+
+  final Widget? aloneOverlay;
+
+  final Duration aloneCardDelay;
+  final double pipBottomInset;
+
   const CallVideoLayout({
     super.key,
     required this.call,
@@ -24,34 +32,16 @@ class CallVideoLayout extends StatefulWidget {
     this.pipBottomInset = 120,
   });
 
-  final CallSnapshot call;
-  final bool isHost;
-
-  /// Tap on the video area (toggles the controls).
-  final VoidCallback onBackgroundTap;
-
-  /// Host: long-press opens participant actions (secondary path).
-  final ValueChanged<CallParticipant>? onParticipantLongPress;
-
-  /// Shown centered while the user is alone (the invite card).
-  final Widget? aloneOverlay;
-
-  /// How long the card waits after the others left (see `_aloneGrace`).
-  final Duration aloneCardDelay;
-  final double pipBottomInset;
-
   @override
-  State<CallVideoLayout> createState() => _CallVideoLayoutState();
+  State<CallVideoLayout> createState() {
+    return _CallVideoLayoutState();
+  }
 }
 
 class _CallVideoLayoutState extends State<CallVideoLayout> {
-  /// Participant shown large in the 1:1 layout; null means the remote one.
   String? _largeId;
 
-  /// Everyone else just left: the invite card waits [aloneCardDelay], so a
-  /// removal or "end for everyone" (LiveKit drops the others before the
-  /// room disconnect arrives) never flashes "You're the only one here".
-  /// Joining an empty room shows the card at once.
+  // Delay the "only one here" card briefly so it doesn't flash when ending a call.
   Timer? _aloneGrace;
 
   @override
@@ -65,7 +55,9 @@ class _CallVideoLayoutState extends State<CallVideoLayout> {
     } else if (!wasAlone) {
       _aloneGrace?.cancel();
       _aloneGrace = Timer(widget.aloneCardDelay, () {
-        if (mounted) setState(() => _aloneGrace = null);
+        if (mounted) {
+          setState(() => _aloneGrace = null);
+        }
       });
     }
   }
@@ -76,43 +68,51 @@ class _CallVideoLayoutState extends State<CallVideoLayout> {
     super.dispose();
   }
 
-  VoidCallback? _longPress(CallParticipant p) {
+  VoidCallback? _longPress(CallParticipant participant) {
     final handler = widget.onParticipantLongPress;
-    if (handler == null || p.isLocal) return null;
-    return () => handler(p);
+    if (handler == null || participant.isLocal) {
+      return null;
+    }
+    return () => handler(participant);
   }
 
   Widget _tile(
-    CallParticipant p, {
+    CallParticipant participant, {
     bool fullBleed = false,
     bool cover = true,
     bool showActiveSpeaker = true,
     VoidCallback? onTap,
     String? tapHint,
-  }) => ParticipantTile(
-    key: ValueKey(p.id),
-    participant: p,
-    isLocalHost: widget.isHost,
-    frontCamera: widget.call.frontCamera,
-    fullBleed: fullBleed,
-    cover: cover,
-    showActiveSpeaker: showActiveSpeaker,
-    onTap: onTap,
-    tapHint: tapHint,
-    onLongPress: _longPress(p),
-  );
+  }) {
+    return ParticipantTile(
+      key: ValueKey(participant.id),
+      participant: participant,
+      isLocalHost: widget.isHost,
+      frontCamera: widget.call.frontCamera,
+      fullBleed: fullBleed,
+      cover: cover,
+      showActiveSpeaker: showActiveSpeaker,
+      onTap: onTap,
+      tapHint: tapHint,
+      onLongPress: _longPress(participant),
+    );
+  }
 
-  Widget _backgroundTapTarget() => Positioned.fill(
-    child: GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: widget.onBackgroundTap,
-    ),
-  );
+  Widget _backgroundTapTarget() {
+    return Positioned.fill(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: widget.onBackgroundTap,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final participants = widget.call.participants;
-    if (participants.isEmpty) return const SizedBox.shrink();
+    if (participants.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     if (participants.length == 1) {
       return Stack(
@@ -123,7 +123,6 @@ class _CallVideoLayoutState extends State<CallVideoLayout> {
           if (widget.aloneOverlay != null && _aloneGrace == null)
             SafeArea(
               child: Padding(
-                // Keeps the card clear of the top bar and the controls.
                 padding: EdgeInsets.only(bottom: widget.pipBottomInset),
                 child: Center(
                   child: SingleChildScrollView(
@@ -139,7 +138,9 @@ class _CallVideoLayoutState extends State<CallVideoLayout> {
       );
     }
 
-    if (participants.length == 2) return _oneToOne(context, participants);
+    if (participants.length == 2) {
+      return _oneToOne(context, participants);
+    }
 
     return Stack(
       fit: StackFit.expand,
@@ -188,7 +189,6 @@ class _CallVideoLayoutState extends State<CallVideoLayout> {
             child: _tile(
               large,
               fullBleed: true,
-              // Remote video is letterboxed so nothing is cropped away.
               cover: large.isLocal,
               showActiveSpeaker: false,
               onTap: widget.onBackgroundTap,

@@ -1,41 +1,32 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:roomtime/presentation/theme/app_colors.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
+import 'package:roomtime/presentation/widgets/app_pressable.dart';
+import 'package:roomtime/presentation/widgets/custom_bounce_button.dart'
+    show MinTapTarget;
+import 'package:roomtime/presentation/widgets/focus_ring.dart';
+import 'package:roomtime/presentation/widgets/glass_effect.dart';
 
-import '../theme/app_colors.dart';
-import '../theme/app_tokens.dart';
-import 'app_pressable.dart';
-import 'custom_bounce_button.dart' show MinTapTarget;
-import 'focus_ring.dart';
-import 'glass_effect.dart';
-
-/// Round glass icon button of dev-0.1.6 (original API and look): a [size]
-/// glass circle tinted [bgColor] with a specular rim and a white [icon]. On
-/// touch it grows to 1.15 (150 ms easeOut) with a white glare and a liquid
-/// stretch toward the finger (x1.05, rubber band), and springs back with
-/// easeOutBack; an icon change crossfades in 300 ms.
-///
-/// Sizes in 0.1.6: 60 (call controls, icon 28), 48 (phone refresh, 24),
-/// 28 (sidebar refresh, 14).
-///
-/// Accessibility, with no change to the look:
-/// - a button named [semanticLabel]; without it the name comes from the
-///   0.1.6 icons (mic, camera, switch, hang-up, end for all, refresh), in
-///   English: pass a localized label. [toggled] exposes on/off (keep the
-///   label stable, "Microphone", and let the state carry on/off);
-/// - focusable; Enter, Space, Select and gamepad A activate it; keyboard
-///   focus ring around the circle;
-/// - hit area at least 48 x 48 dp, so a 28 dp circle is padded;
-/// - [tooltip] defaults to the name, for pointer users;
-/// - reduced motion: no bounce, stretch or crossfade.
 class LiquidBounceButton extends StatelessWidget {
+  static final Map<IconData, (String, bool?)> _fallbackNames = {
+    Icons.mic: ('Microphone', true),
+    Icons.mic_off: ('Microphone', false),
+    Icons.videocam: ('Camera', true),
+    Icons.videocam_off: ('Camera', false),
+    Icons.cameraswitch: ('Switch camera', null),
+    Icons.call_end: ('Leave call', null),
+    Icons.dangerous: ('End call for everyone', null),
+    Icons.refresh: ('Refresh', null),
+  };
+
   final VoidCallback onPressed;
   final IconData icon;
   final Color bgColor;
   final double size;
   final double iconSize;
 
-  /// Accessible name; see the class docs for the fallback.
   final String? semanticLabel;
   final String? tooltip;
   final bool? toggled;
@@ -56,28 +47,17 @@ class LiquidBounceButton extends StatelessWidget {
     this.autofocus = false,
   });
 
-  /// Names (and toggle state) of the icons the 0.1.6 screens used.
-  static final Map<IconData, (String, bool?)> _fallbackNames = {
-    Icons.mic: ('Microphone', true),
-    Icons.mic_off: ('Microphone', false),
-    Icons.videocam: ('Camera', true),
-    Icons.videocam_off: ('Camera', false),
-    Icons.cameraswitch: ('Switch camera', null),
-    Icons.call_end: ('Leave call', null),
-    Icons.dangerous: ('End call for everyone', null),
-    Icons.refresh: ('Refresh', null),
-  };
-
   @override
   Widget build(BuildContext context) {
     final fallback = _fallbackNames[icon];
     final label = semanticLabel ?? fallback?.$1;
+    final defaultToggled = semanticLabel == null ? fallback?.$2 : null;
     final reduced = AppMotion.reduced(context);
 
     return AppPressable(
       onPressed: onPressed,
       semanticLabel: label,
-      toggled: toggled ?? (semanticLabel == null ? fallback?.$2 : null),
+      toggled: toggled ?? defaultToggled,
       tooltip: tooltip ?? label,
       focusNode: focusNode,
       autofocus: autofocus,
@@ -97,6 +77,10 @@ class LiquidBounceButton extends StatelessWidget {
             child: glyph,
           );
         }
+
+        final isPressed = states.contains(WidgetState.pressed);
+        final isFocused = states.contains(WidgetState.focused);
+
         Widget circle = GlassEffect(
           oval: true,
           blurSigma: AppGlass.blurSigma,
@@ -109,9 +93,7 @@ class LiquidBounceButton extends StatelessWidget {
                 glyph,
                 Positioned.fill(
                   child: AnimatedOpacity(
-                    opacity: states.contains(WidgetState.pressed)
-                        ? AppGlass.pressedGlareAlpha
-                        : 0,
+                    opacity: isPressed ? AppGlass.pressedGlareAlpha : 0,
                     duration: AppMotion.resolve(context, AppMotion.glare),
                     curve: AppMotion.glareCurve,
                     child: const DecoratedBox(
@@ -133,24 +115,17 @@ class LiquidBounceButton extends StatelessWidget {
           );
         }
         return MinTapTarget(
-          child: FocusRing(
-            visible: states.contains(WidgetState.focused),
-            child: circle,
-          ),
+          child: FocusRing(visible: isFocused, child: circle),
         );
       },
     );
   }
 }
 
-/// The 0.1.6 `LiquidStretch` (interactionScale 1.05, stretch 0.2): while a
-/// pointer is down the child grows slightly and stretches toward the drag
-/// (with resistance, volume roughly preserved), then springs back.
-/// Visual only; it does not take part in the gesture arena.
 class _LiquidStretch extends StatefulWidget {
-  const _LiquidStretch({required this.child});
-
   final Widget child;
+
+  const _LiquidStretch({required this.child});
 
   @override
   State<_LiquidStretch> createState() => _LiquidStretchState();
@@ -238,8 +213,6 @@ class _LiquidStretchState extends State<_LiquidStretch>
     );
   }
 
-  /// Scale toward the stretch, keeping the area close to `1 + 0.5 x` the
-  /// relative stretch, then shift by it (as `RawLiquidStretch` of 0.1.6).
   static Matrix4 _stretch(Offset pixels, BoxConstraints constraints) {
     if (pixels == Offset.zero || !constraints.hasBoundedWidth) {
       return Matrix4.identity();

@@ -1,247 +1,102 @@
-import 'dart:convert';
+import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
 
-import 'package:equatable/equatable.dart';
-
-import 'room_code.dart';
+part 'room.freezed.dart';
 
 enum RoomRole { host, participant }
 
-/// Public pre-join view of a room (`GET /rooms/{code}`).
-/// [name] is null when the room requires a password.
-final class RoomSummary extends Equatable {
-  const RoomSummary({
-    required this.code,
-    required this.inviteUrl,
-    this.name,
-    required this.passwordRequired,
-    required this.e2ee,
-    required this.locked,
-    required this.expiresAt,
-  });
-
-  final RoomCode code;
-
-  /// The server's invite link for [code]; never built on the client.
-  final Uri inviteUrl;
-  final String? name;
-  final bool passwordRequired;
-  final bool e2ee;
-  final bool locked;
-
-  /// End of the invitation (not of a call in progress).
-  final DateTime expiresAt;
-
-  @override
-  List<Object?> get props => [
-    code,
-    inviteUrl,
-    name,
-    passwordRequired,
-    e2ee,
-    locked,
-    expiresAt,
-  ];
+@freezed
+abstract class RoomSummary with _$RoomSummary {
+  const factory RoomSummary({
+    required RoomCode code,
+    required Uri inviteUrl,
+    String? name,
+    required bool passwordRequired,
+    required bool e2ee,
+    required bool locked,
+    required DateTime expiresAt,
+  }) = _RoomSummary;
 }
 
-/// Room details returned with a successful join.
-final class RoomInfo extends Equatable {
-  const RoomInfo({
-    required this.code,
-    required this.inviteUrl,
-    this.name,
-    required this.passwordRequired,
-    required this.e2ee,
-    required this.locked,
-    required this.maxParticipants,
-    required this.expiresAt,
-  });
-
-  final RoomCode code;
-
-  /// The server's invite link for [code]; changes with [code] on rotation.
-  final Uri inviteUrl;
-  final String? name;
-  final bool passwordRequired;
-  final bool e2ee;
-  final bool locked;
-  final int maxParticipants;
-
-  /// End of the invitation and of the host controls, not of the call.
-  final DateTime expiresAt;
-
-  RoomInfo copyWith({
-    RoomCode? code,
-    Uri? inviteUrl,
-    bool? passwordRequired,
-    bool? locked,
-  }) => RoomInfo(
-    code: code ?? this.code,
-    inviteUrl: inviteUrl ?? this.inviteUrl,
-    name: name,
-    passwordRequired: passwordRequired ?? this.passwordRequired,
-    e2ee: e2ee,
-    locked: locked ?? this.locked,
-    maxParticipants: maxParticipants,
-    expiresAt: expiresAt,
-  );
-
-  @override
-  List<Object?> get props => [
-    code,
-    inviteUrl,
-    name,
-    passwordRequired,
-    e2ee,
-    locked,
-    maxParticipants,
-    expiresAt,
-  ];
+@freezed
+abstract class RoomInfo with _$RoomInfo {
+  const factory RoomInfo({
+    required RoomCode code,
+    required Uri inviteUrl,
+    String? name,
+    required bool passwordRequired,
+    required bool e2ee,
+    required bool locked,
+    required int maxParticipants,
+    required DateTime expiresAt,
+  }) = _RoomInfo;
 }
 
-/// Result of `POST /rooms`. The owner token stays in the data layer.
-final class CreatedRoom extends Equatable {
-  const CreatedRoom({
-    required this.roomId,
-    required this.code,
-    required this.inviteUrl,
-    this.name,
-    required this.passwordRequired,
-    required this.e2ee,
-    required this.maxParticipants,
-    required this.expiresAt,
-  });
-
-  final String roomId;
-  final RoomCode code;
-  final Uri inviteUrl;
-  final String? name;
-  final bool passwordRequired;
-  final bool e2ee;
-  final int maxParticipants;
-  final DateTime expiresAt;
-
-  @override
-  List<Object?> get props => [
-    roomId,
-    code,
-    inviteUrl,
-    name,
-    passwordRequired,
-    e2ee,
-    maxParticipants,
-    expiresAt,
-  ];
+@freezed
+abstract class CreatedRoom with _$CreatedRoom {
+  const factory CreatedRoom({
+    required String roomId,
+    required RoomCode code,
+    required Uri inviteUrl,
+    String? name,
+    required bool passwordRequired,
+    required bool e2ee,
+    required int maxParticipants,
+    required DateTime expiresAt,
+  }) = _CreatedRoom;
 }
 
-/// Media grant from `POST /rooms/{code}/join`. Kept in memory only.
-final class RoomJoin extends Equatable {
-  const RoomJoin({
-    required this.token,
-    required this.livekitUrl,
-    required this.identity,
-    required this.role,
-    required this.room,
-  });
+@freezed
+abstract class RoomJoin with _$RoomJoin {
+  const RoomJoin._();
 
-  /// Short-lived LiveKit token; never persisted or logged.
-  final String token;
-  final String livekitUrl;
-  final String identity;
-  final RoomRole role;
-  final RoomInfo room;
-
-  @override
-  List<Object?> get props => [token, livekitUrl, identity, role, room];
+  const factory RoomJoin({
+    required String token,
+    required String livekitUrl,
+    required String identity,
+    required RoomRole role,
+    required RoomInfo room,
+  }) = _RoomJoin;
 
   @override
   String toString() => 'RoomJoin(identity: $identity, role: $role)';
 }
 
-/// Why a password breaks [RoomPassword].
-enum RoomPasswordIssue { tooShort, tooLong }
+@freezed
+abstract class CreateRoomParams with _$CreateRoomParams {
+  const CreateRoomParams._();
 
-/// Room password rule of the API, taken verbatim: 4..64 characters (Unicode
-/// code points, as the server counts runes) and at most 72 bytes of UTF-8
-/// (openapi `CreateRoomRequest.password`, server `room.ValidatePassword`).
-/// The one place the client keeps it.
-abstract final class RoomPassword {
-  static const minLength = 4;
-  static const maxLength = 64;
-  static const maxBytes = 72;
+  const factory CreateRoomParams({
+    String? name,
+    String? password,
+    int? maxParticipants,
+    int? lifetimeMinutes,
+    bool? e2ee,
+  }) = _CreateRoomParams;
 
-  /// Null when [password] is valid.
-  static RoomPasswordIssue? check(String password) {
-    final characters = password.runes.length;
-    if (characters < minLength) return RoomPasswordIssue.tooShort;
-    if (characters > maxLength || utf8.encode(password).length > maxBytes) {
-      return RoomPasswordIssue.tooLong;
-    }
-    return null;
+  @override
+  String toString() {
+    return 'CreateRoomParams(name: $name, hasPassword: ${password != null})';
   }
 }
 
-/// Options for `POST /rooms`; null fields use the server defaults (the
-/// default limits live only on the server).
-final class CreateRoomParams extends Equatable {
-  const CreateRoomParams({
-    this.name,
-    this.password,
-    this.maxParticipants,
-    this.lifetimeMinutes,
-    this.e2ee,
-  });
-
-  final String? name;
-  final String? password;
-  final int? maxParticipants;
-  final int? lifetimeMinutes;
-  final bool? e2ee;
-
-  @override
-  List<Object?> get props => [
-    name,
-    password,
-    maxParticipants,
-    lifetimeMinutes,
-    e2ee,
-  ];
-
-  @override
-  String toString() =>
-      'CreateRoomParams(name: $name, hasPassword: ${password != null})';
+@Freezed(toStringOverride: false)
+sealed class PasswordChange with _$PasswordChange {
+  const factory PasswordChange.set(String password) = SetPassword;
+  const factory PasswordChange.remove() = RemovePassword;
 }
 
-/// Password change in a [RoomPatch].
-sealed class PasswordChange {
-  const PasswordChange();
+@freezed
+abstract class RoomPatch with _$RoomPatch {
+  const factory RoomPatch({
+    bool? locked,
+    String? name,
+    PasswordChange? password,
+  }) = _RoomPatch;
 }
 
-final class SetPassword extends PasswordChange {
-  const SetPassword(this.password);
-
-  final String password;
-}
-
-final class RemovePassword extends PasswordChange {
-  const RemovePassword();
-}
-
-/// Owner settings change (`PATCH /rooms/{code}`); null fields stay unchanged.
-final class RoomPatch {
-  const RoomPatch({this.locked, this.name, this.password});
-
-  final bool? locked;
-  final String? name;
-  final PasswordChange? password;
-}
-
-/// New invitation after `POST /rooms/{code}/rotate-code`.
-final class RotatedCode extends Equatable {
-  const RotatedCode({required this.code, required this.inviteUrl});
-
-  final RoomCode code;
-  final Uri inviteUrl;
-
-  @override
-  List<Object?> get props => [code, inviteUrl];
+@freezed
+abstract class RotatedCode with _$RotatedCode {
+  const factory RotatedCode({required RoomCode code, required Uri inviteUrl}) =
+      _RotatedCode;
 }

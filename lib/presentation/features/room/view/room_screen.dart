@@ -1,40 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:roomtime/core/router/app_routes.dart';
+import 'package:roomtime/domain/entities/room.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
+import 'package:roomtime/presentation/features/room/bloc/lobby_cubit.dart';
+import 'package:roomtime/presentation/features/room/bloc/room_bloc.dart';
+import 'package:roomtime/presentation/features/room/view/call_view.dart';
+import 'package:roomtime/presentation/features/room/view/ended_view.dart';
+import 'package:roomtime/presentation/features/room/view/join_error_view.dart';
+import 'package:roomtime/presentation/features/room/view/lobby_view.dart';
+import 'package:roomtime/presentation/features/room/view/room_exit_guard.dart';
 
-import '../../../../core/router/app_routes.dart';
-import '../../../../domain/entities/room.dart';
-import '../../../../domain/entities/room_code.dart';
-import '../bloc/lobby_cubit.dart';
-import '../bloc/room_bloc.dart';
-import 'call_view.dart';
-import 'ended_view.dart';
-import 'join_error_view.dart';
-import 'lobby_view.dart';
+export 'package:roomtime/presentation/features/room/view/room_exit_guard.dart';
 
-/// Lets the room route ask before history navigation (browser Back, a new
-/// URL) leaves a call. The call view attaches while it is shown; in
-/// every other state the route may leave at once.
-final class RoomExitGuard {
-  Future<bool> Function()? _onExit;
-
-  void attach(Future<bool> Function() onExit) => _onExit = onExit;
-
-  void detach(Future<bool> Function() onExit) {
-    if (_onExit == onExit) _onExit = null;
-  }
-
-  /// True when the route may leave now.
-  Future<bool> mayExit() => _onExit?.call() ?? Future.value(true);
-}
-
-/// `/r/:code`: lobby → call → ended, one attempt at a time.
-///
-/// Each attempt gets a fresh [RoomBloc] and [LobbyCubit] from the factories
-/// (the composition root passes them in), so "Rejoin" and "Try again" always
-/// make a new join request, and closing the screen releases camera,
-/// microphone and the media connection.
 class RoomScreen extends StatefulWidget {
+  final RoomCode code;
+
+  final RoomSummary? summary;
+  final RoomBloc Function() createRoomBloc;
+  final LobbyCubit Function() createLobbyCubit;
+  final RoomExitGuard? exitGuard;
+
   const RoomScreen({
     super.key,
     required this.code,
@@ -44,16 +31,10 @@ class RoomScreen extends StatefulWidget {
     this.exitGuard,
   });
 
-  final RoomCode code;
-
-  /// Lookup result from Home; used for the first attempt only.
-  final RoomSummary? summary;
-  final RoomBloc Function() createRoomBloc;
-  final LobbyCubit Function() createLobbyCubit;
-  final RoomExitGuard? exitGuard;
-
   @override
-  State<RoomScreen> createState() => _RoomScreenState();
+  State<RoomScreen> createState() {
+    return _RoomScreenState();
+  }
 }
 
 class _RoomScreenState extends State<RoomScreen> {
@@ -61,17 +42,25 @@ class _RoomScreenState extends State<RoomScreen> {
   late RoomCode _code = widget.code;
   DeviceChoice _devices = (camera: true, microphone: true);
 
-  void _newAttempt({RoomCode? code}) => setState(() {
-    _attempt++;
-    if (code != null) _code = code;
-  });
+  void _newAttempt({RoomCode? code}) {
+    setState(() {
+      _attempt++;
+      if (code != null) {
+        _code = code;
+      }
+    });
+  }
 
-  void _goHome() => context.go(AppRoutes.home);
+  void _goHome() {
+    context.go(AppRoutes.home);
+  }
 
-  void _newRoom() => context.go(
-    AppRoutes.home,
-    extra: const HomeRouteExtra(openCreateSheet: true),
-  );
+  void _newRoom() {
+    context.go(
+      AppRoutes.home,
+      extra: const HomeRouteExtra(openCreateSheet: true),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +85,6 @@ class _RoomScreenState extends State<RoomScreen> {
             current is RoomFailed ||
             current is RoomEnded,
         builder: (context, state) => PopScope(
-          // System Back outside a call goes Home instead of closing the
-          // app; in a call, CallView runs the Leave flow.
           canPop: false,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop && context.read<RoomBloc>().state is! RoomInCall) {
@@ -110,21 +97,23 @@ class _RoomScreenState extends State<RoomScreen> {
     );
   }
 
-  Widget _body(RoomState state) => switch (state) {
-    RoomInCall() => CallView(exitGuard: widget.exitGuard),
-    RoomEnded(:final reason, :final endedByYou, :final code) => EndedView(
-      reason: reason,
-      endedByYou: endedByYou,
-      onRejoin: () => _newAttempt(code: code),
-      onHome: _goHome,
-      onNewRoom: _newRoom,
-    ),
-    RoomFailed(:final failure) when isFullScreenJoinFailure(failure) =>
-      JoinErrorView(failure: failure, onHome: _goHome, onRetry: _newAttempt),
-    RoomInitial() || RoomConnecting() || RoomFailed() => LobbyView(
-      code: _code,
-      onHome: _goHome,
-      onJoining: (devices) => _devices = devices,
-    ),
-  };
+  Widget _body(RoomState state) {
+    return switch (state) {
+      RoomInCall() => CallView(exitGuard: widget.exitGuard),
+      RoomEnded(:final reason, :final endedByYou, :final code) => EndedView(
+        reason: reason,
+        endedByYou: endedByYou,
+        onRejoin: () => _newAttempt(code: code),
+        onHome: _goHome,
+        onNewRoom: _newRoom,
+      ),
+      RoomFailed(:final failure) when isFullScreenJoinFailure(failure) =>
+        JoinErrorView(failure: failure, onHome: _goHome, onRetry: _newAttempt),
+      RoomInitial() || RoomConnecting() || RoomFailed() => LobbyView(
+        code: _code,
+        onHome: _goHome,
+        onJoining: (devices) => _devices = devices,
+      ),
+    };
+  }
 }

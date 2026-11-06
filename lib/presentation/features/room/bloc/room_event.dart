@@ -1,166 +1,53 @@
 part of 'room_bloc.dart';
 
-sealed class RoomEvent extends Equatable {
-  const RoomEvent();
+@Freezed(toStringOverride: false)
+sealed class RoomEvent with _$RoomEvent {
+  const factory RoomEvent.joinRequested({
+    required RoomCode code,
+    String? password,
+    @Default(true) bool microphoneEnabled,
+    @Default(true) bool cameraEnabled,
+    String? displayName,
+  }) = RoomJoinRequested;
 
-  @override
-  List<Object?> get props => const [];
-}
+  const factory RoomEvent.leaveRequested() = RoomLeaveRequested;
 
-/// Joins [code]; also used to retry from [RoomFailed] (e.g. with a password).
-final class RoomJoinRequested extends RoomEvent {
-  const RoomJoinRequested({
-    required this.code,
-    this.password,
-    this.microphoneEnabled = true,
-    this.cameraEnabled = true,
-    this.displayName,
-  });
+  const factory RoomEvent.microphoneToggled(bool enabled) =
+      RoomMicrophoneToggled;
 
-  final RoomCode code;
-  final String? password;
-  final bool microphoneEnabled;
-  final bool cameraEnabled;
+  const factory RoomEvent.cameraToggled(bool enabled) = RoomCameraToggled;
 
-  /// Saved to the guest profile before joining; null keeps the stored name.
-  final String? displayName;
+  const factory RoomEvent.cameraFlipped() = RoomCameraFlipped;
 
-  @override
-  List<Object?> get props => [
-    code,
-    password,
-    microphoneEnabled,
-    cameraEnabled,
-    displayName,
-  ];
+  const factory RoomEvent.speakerphoneToggled(bool on) =
+      RoomSpeakerphoneToggled;
 
-  @override
-  String toString() =>
-      'RoomJoinRequested($code, hasPassword: ${password != null})';
-}
+  const factory RoomEvent.audioPlaybackStartRequested() =
+      RoomAudioPlaybackStartRequested;
 
-final class RoomLeaveRequested extends RoomEvent {
-  const RoomLeaveRequested();
-}
+  const factory RoomEvent.appLifecycleChanged(AppLifecycleState state) =
+      RoomAppLifecycleChanged;
 
-final class RoomMicrophoneToggled extends RoomEvent {
-  const RoomMicrophoneToggled(this.enabled);
+  const factory RoomEvent.endForAllRequested() = RoomEndForAllRequested;
 
-  final bool enabled;
+  const factory RoomEvent.participantMuteRequested({
+    required String identity,
+    required String trackSid,
+  }) = RoomParticipantMuteRequested;
 
-  @override
-  List<Object?> get props => [enabled];
-}
+  const factory RoomEvent.participantRemoveRequested({
+    required String identity,
+    @Default(false) bool ban,
+  }) = RoomParticipantRemoveRequested;
 
-final class RoomCameraToggled extends RoomEvent {
-  const RoomCameraToggled(this.enabled);
+  const factory RoomEvent.lockRequested(bool locked) = RoomLockRequested;
 
-  final bool enabled;
+  const factory RoomEvent.passwordChangeRequested(String? password) =
+      RoomPasswordChangeRequested;
 
-  @override
-  List<Object?> get props => [enabled];
-}
+  const factory RoomEvent.inviteRotateRequested() = RoomInviteRotateRequested;
 
-final class RoomCameraFlipped extends RoomEvent {
-  const RoomCameraFlipped();
-}
+  const factory RoomEvent.expiryWarningDue() = _RoomExpiryWarningDue;
 
-final class RoomSpeakerphoneToggled extends RoomEvent {
-  const RoomSpeakerphoneToggled(this.on);
-
-  final bool on;
-
-  @override
-  List<Object?> get props => [on];
-}
-
-/// Web: user gesture that unblocks audio playback.
-final class RoomAudioPlaybackStartRequested extends RoomEvent {
-  const RoomAudioPlaybackStartRequested();
-}
-
-/// Forwarded by the call screen; pauses the camera in the background on
-/// mobile and restores the previous state on resume.
-final class RoomAppLifecycleChanged extends RoomEvent {
-  const RoomAppLifecycleChanged(this.state);
-
-  final AppLifecycleState state;
-
-  @override
-  List<Object?> get props => [state];
-}
-
-/// Host: end the call for everyone.
-final class RoomEndForAllRequested extends RoomEvent {
-  const RoomEndForAllRequested();
-}
-
-/// Host: mute one participant's microphone track.
-final class RoomParticipantMuteRequested extends RoomEvent {
-  const RoomParticipantMuteRequested({
-    required this.identity,
-    required this.trackSid,
-  });
-
-  final String identity;
-  final String trackSid;
-
-  @override
-  List<Object?> get props => [identity, trackSid];
-}
-
-/// Host: remove a participant, optionally banning them from the room.
-final class RoomParticipantRemoveRequested extends RoomEvent {
-  const RoomParticipantRemoveRequested({
-    required this.identity,
-    this.ban = false,
-  });
-
-  final String identity;
-  final bool ban;
-
-  @override
-  List<Object?> get props => [identity, ban];
-}
-
-/// Host: lock or unlock the room for new joins.
-final class RoomLockRequested extends RoomEvent {
-  const RoomLockRequested(this.locked);
-
-  final bool locked;
-
-  @override
-  List<Object?> get props => [locked];
-}
-
-/// Host: set a new password, or remove it with `null`.
-final class RoomPasswordChangeRequested extends RoomEvent {
-  const RoomPasswordChangeRequested(this.password);
-
-  final String? password;
-
-  @override
-  List<Object?> get props => [password != null];
-
-  @override
-  String toString() =>
-      'RoomPasswordChangeRequested(remove: ${password == null})';
-}
-
-/// Host: revoke the invite and issue a new code and link.
-final class RoomInviteRotateRequested extends RoomEvent {
-  const RoomInviteRotateRequested();
-}
-
-final class _RoomExpiryWarningDue extends RoomEvent {
-  const _RoomExpiryWarningDue();
-}
-
-final class _RoomCallUpdated extends RoomEvent {
-  const _RoomCallUpdated(this.snapshot);
-
-  final CallSnapshot snapshot;
-
-  @override
-  List<Object?> get props => [snapshot];
+  const factory RoomEvent.callUpdated(CallSnapshot snapshot) = _RoomCallUpdated;
 }

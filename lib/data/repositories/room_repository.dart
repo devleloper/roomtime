@@ -1,29 +1,35 @@
 import 'package:injectable/injectable.dart';
+import 'package:roomtime/core/utils/clock.dart';
+import 'package:roomtime/data/local/owner_token_store.dart';
+import 'package:roomtime/data/models/room_dtos.dart';
+import 'package:roomtime/data/network/room_api_data_source.dart';
+import 'package:roomtime/domain/entities/guest_profile.dart';
+import 'package:roomtime/domain/entities/recent_room.dart';
+import 'package:roomtime/domain/entities/room.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
+import 'package:roomtime/domain/failures/failure.dart';
+import 'package:roomtime/domain/repositories/recent_rooms_repository.dart';
+import 'package:roomtime/domain/repositories/room_repository.dart';
 
-import '../../core/time/clock.dart';
-import '../../domain/entities/guest_profile.dart';
-import '../../domain/entities/recent_room.dart';
-import '../../domain/entities/room.dart';
-import '../../domain/entities/room_code.dart';
-import '../../domain/failures/failure.dart';
-import '../../domain/repositories/i_recent_rooms_repository.dart';
-import '../../domain/repositories/i_room_repository.dart';
-import '../datasources/owner_token_store.dart';
-import '../datasources/room_api_data_source.dart';
-import '../models/room_dtos.dart';
-
-@LazySingleton(as: IRoomRepository)
-class RoomRepository implements IRoomRepository {
-  RoomRepository(this._api, this._ownerTokens, this._recentRooms, this._clock);
-
+@LazySingleton(as: RoomRepository)
+class ApiRoomRepository implements RoomRepository {
   final RoomApiDataSource _api;
   final OwnerTokenStore _ownerTokens;
-  final IRecentRoomsRepository _recentRooms;
+  final RecentRoomsRepository _recentRooms;
   final Clock _clock;
+
+  ApiRoomRepository(
+    this._api,
+    this._ownerTokens,
+    this._recentRooms,
+    this._clock,
+  );
 
   @override
   Future<CreatedRoom> createRoom(CreateRoomParams params) async {
-    final response = await _api.createRoom(CreateRoomRequestDto(params));
+    final response = await _api.createRoom(
+      CreateRoomRequestDto.fromParams(params),
+    );
     final room = response.room;
     await _ownerTokens.save(
       OwnerTokenRecord(
@@ -44,7 +50,9 @@ class RoomRepository implements IRoomRepository {
   }
 
   @override
-  Future<RoomSummary> lookup(RoomCode code) => _api.lookup(code);
+  Future<RoomSummary> lookup(RoomCode code) {
+    return _api.lookup(code);
+  }
 
   @override
   Future<RoomJoin> join(
@@ -74,8 +82,10 @@ class RoomRepository implements IRoomRepository {
   }
 
   @override
-  Future<bool> isOwner(RoomCode code) async =>
-      await _ownerTokens.findByCode(code.value) != null;
+  Future<bool> isOwner(RoomCode code) async {
+    final owner = await _ownerTokens.findByCode(code.value);
+    return owner != null;
+  }
 
   @override
   Future<void> endRoom(RoomCode code) async {
@@ -136,7 +146,11 @@ class RoomRepository implements IRoomRepository {
     return rotated;
   }
 
-  Future<OwnerTokenRecord> _requireOwner(RoomCode code) async =>
-      await _ownerTokens.findByCode(code.value) ??
-      (throw const ForbiddenFailure());
+  Future<OwnerTokenRecord> _requireOwner(RoomCode code) async {
+    final owner = await _ownerTokens.findByCode(code.value);
+    if (owner == null) {
+      throw const ForbiddenFailure();
+    }
+    return owner;
+  }
 }

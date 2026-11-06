@@ -79,7 +79,6 @@ void main() {
     );
   });
 
-  // a link cut inside a percent-escape is "not a code", not a crash.
   test('broken percent-escapes in a link return null', () {
     expect(
       RoomCode.tryParse('https://calls.example.com/r/abc-defg-hjk%'),
@@ -89,7 +88,6 @@ void main() {
     expect(RoomCode.tryParse('/r/%'), isNull);
   });
 
-  // a well-formed escape of invalid UTF-8 throws FormatException.
   test('percent-escapes of invalid UTF-8 return null', () {
     expect(RoomCode.tryParse('https://host/r/%FF'), isNull);
     expect(RoomCode.tryParse('/r/abc%C3'), isNull);

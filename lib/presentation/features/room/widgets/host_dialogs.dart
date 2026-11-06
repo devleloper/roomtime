@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
-
-import '../../../../domain/entities/call_snapshot.dart';
-import '../../../../domain/entities/room.dart';
-import '../../../dialogs/glass_dialog.dart';
-import '../../../theme/theme.dart';
-import 'participant_tile.dart';
-import '../../../../l10n/l10n.dart';
+import 'package:roomtime/domain/entities/call_snapshot.dart';
+import 'package:roomtime/domain/entities/room_password.dart';
+import 'package:roomtime/l10n/l10n.dart';
+import 'package:roomtime/presentation/features/room/widgets/participant_tile.dart';
+import 'package:roomtime/presentation/theme/app_colors.dart';
+import 'package:roomtime/presentation/widgets/glass_button.dart';
+import 'package:roomtime/presentation/widgets/glass_dialog.dart';
+import 'package:roomtime/presentation/widgets/glass_text_field.dart';
 
 enum LeaveChoice { leave, end }
 
 enum ParticipantAction { mute, remove }
 
-/// Host's Leave (flows.md §7) in the 0.1.6 glass dialog: Leave or End for
-/// everyone, and for the latter a destructive confirmation with focus on
-/// Cancel. Resolves to the confirmed choice, or null when dismissed.
 Future<LeaveChoice?> showHostLeaveFlow(BuildContext context) async {
   final choice = await showGlassChoices<LeaveChoice>(
     context: context,
@@ -36,7 +34,9 @@ Future<LeaveChoice?> showHostLeaveFlow(BuildContext context) async {
       ),
     ],
   );
-  if (choice != LeaveChoice.end || !context.mounted) return choice;
+  if (choice != LeaveChoice.end || !context.mounted) {
+    return choice;
+  }
   final confirmed = await showGlassConfirm(
     context: context,
     title: context.l10n.roomLeaveConfirmTitle,
@@ -48,51 +48,54 @@ Future<LeaveChoice?> showHostLeaveFlow(BuildContext context) async {
   return confirmed ? LeaveChoice.end : null;
 }
 
-/// Host options for one participant (flows.md §6; 0.1.6 long-press).
 Future<ParticipantAction?> showParticipantActions(
   BuildContext context,
   CallParticipant participant,
-) => showGlassChoices<ParticipantAction>(
-  context: context,
-  title: context.l10n.roomOptionsFor(participantName(context, participant)),
-  cancelLabel: context.l10n.roomCancel,
-  choices: [
-    if (participant.microphoneEnabled && participant.audioTrackSid != null)
+) {
+  return showGlassChoices<ParticipantAction>(
+    context: context,
+    title: context.l10n.roomOptionsFor(participantName(context, participant)),
+    cancelLabel: context.l10n.roomCancel,
+    choices: [
+      if (participant.microphoneEnabled && participant.audioTrackSid != null)
+        (
+          label: context.l10n.roomMute,
+          description: null,
+          icon: Icons.mic_off,
+          value: ParticipantAction.mute,
+          destructive: false,
+        ),
       (
-        label: context.l10n.roomMute,
+        label: context.l10n.roomRemove,
         description: null,
-        icon: Icons.mic_off,
-        value: ParticipantAction.mute,
-        destructive: false,
+        icon: Icons.person_remove,
+        value: ParticipantAction.remove,
+        destructive: true,
       ),
-    (
-      label: context.l10n.roomRemove,
-      description: null,
-      icon: Icons.person_remove,
-      value: ParticipantAction.remove,
-      destructive: true,
-    ),
-  ],
-);
+    ],
+  );
+}
 
-/// Remove confirmation with the ban option. Resolves to `null` when
-/// cancelled, otherwise to whether the participant is banned.
 Future<bool?> showRemoveParticipantDialog(
   BuildContext context,
   CallParticipant participant,
-) => showGlassDialog<bool>(
-  context: context,
-  builder: (context) =>
-      _RemoveDialog(name: participantName(context, participant)),
-);
+) {
+  return showGlassDialog<bool>(
+    context: context,
+    builder: (context) =>
+        _RemoveDialog(name: participantName(context, participant)),
+  );
+}
 
 class _RemoveDialog extends StatefulWidget {
-  const _RemoveDialog({required this.name});
-
   final String name;
 
+  const _RemoveDialog({required this.name});
+
   @override
-  State<_RemoveDialog> createState() => _RemoveDialogState();
+  State<_RemoveDialog> createState() {
+    return _RemoveDialogState();
+  }
 }
 
 class _RemoveDialogState extends State<_RemoveDialog> {
@@ -104,8 +107,6 @@ class _RemoveDialogState extends State<_RemoveDialog> {
       title: context.l10n.roomRemoveTitle(widget.name),
       message: context.l10n.roomRemoveBody,
       body: [
-        // A glass row, not an M3 list tile: the whole row toggles, black
-        // check on #00AEFF (8:1).
         MergeSemantics(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -156,18 +157,20 @@ class _RemoveDialogState extends State<_RemoveDialog> {
   }
 }
 
-/// Asks for a new room password ([RoomPassword]). Null when cancelled.
-Future<String?> showChangePasswordDialog(BuildContext context) =>
-    showGlassDialog<String>(
-      context: context,
-      builder: (context) => const _PasswordDialog(),
-    );
+Future<String?> showChangePasswordDialog(BuildContext context) {
+  return showGlassDialog<String>(
+    context: context,
+    builder: (context) => const _PasswordDialog(),
+  );
+}
 
 class _PasswordDialog extends StatefulWidget {
   const _PasswordDialog();
 
   @override
-  State<_PasswordDialog> createState() => _PasswordDialogState();
+  State<_PasswordDialog> createState() {
+    return _PasswordDialogState();
+  }
 }
 
 class _PasswordDialogState extends State<_PasswordDialog> {
@@ -199,8 +202,6 @@ class _PasswordDialogState extends State<_PasswordDialog> {
       title: context.l10n.roomPasswordDialogTitle,
       message: context.l10n.roomPasswordDialogBody,
       body: [
-        // No autofill: a password manager would offer this room's
-        // password on every room of the same origin.
         GlassTextField(
           controller: _controller,
           label: context.l10n.roomPasswordLabel,
@@ -210,7 +211,9 @@ class _PasswordDialogState extends State<_PasswordDialog> {
           autofocus: true,
           textInputAction: TextInputAction.done,
           onChanged: (_) {
-            if (_error != null) setState(() => _error = null);
+            if (_error != null) {
+              setState(() => _error = null);
+            }
           },
           onSubmitted: (_) => _save(),
         ),

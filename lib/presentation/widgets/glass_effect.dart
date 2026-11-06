@@ -2,31 +2,23 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
 
-import '../theme/app_tokens.dart';
-
-/// The dev-0.1.6 glass material, drawn the way `liquid_glass_renderer`
-/// 0.2.0-dev.4 `FakeGlass` drew it on iOS and macOS, but from Flutter
-/// primitives only (`BackdropFilter`, clip, canvas): no shaders, no package,
-/// identical on iOS, Android, macOS and web (CanvasKit and skwasm).
-///
-/// Layers, bottom to top, clipped to the shape:
-/// 1. backdrop: saturation [AppGlass.saturation], then blur [blurSigma]
-///    (mirror edges);
-/// 2. [tint], multiplied into dark backdrops (screen for light tints), so a
-///    dark tint darkens video instead of greying it;
-/// 3. a specular rim: a 1.5 dp hard-light stroke plus a soft 2 dp overlay
-///    stroke in [rimColor], lit from [AppGlass.lightAngle] (top and bottom
-///    edges bright, sides fading out). This is the faint rim seen on
-///    0.1.6 pills and circles;
-/// 4. [child].
-///
-/// Model after `FakeGlass` (liquid_glass_renderer 0.2.0-dev.4, MIT,
-/// Copyright 2025 Tim Lehmann for whynotmake.it); an independent
-/// implementation, no code from the package is used.
-///
-/// Purely visual: no semantics, no hit testing changes.
+// Frosted glass rendered with standard Flutter primitives (no custom shaders) for cross-platform parity.
 class GlassEffect extends StatelessWidget {
+  final Widget child;
+
+  final BorderRadius borderRadius;
+
+  final bool oval;
+
+  final double blurSigma;
+  final Color tint;
+
+  final Color rimColor;
+
+  final double rimStrength;
+
   const GlassEffect({
     super.key,
     required this.child,
@@ -38,35 +30,30 @@ class GlassEffect extends StatelessWidget {
     this.rimStrength = 1,
   });
 
-  final Widget child;
-
-  /// Corner radii of the rounded-rectangle shape; ignored when [oval].
-  final BorderRadius borderRadius;
-
-  /// Circle/ellipse shape (0.1.6 `LiquidOval`).
-  final bool oval;
-
-  /// Backdrop blur; 0 draws no backdrop filter at all (high contrast, or
-  /// the start of a morph), and the tint is painted normally.
-  final double blurSigma;
-  final Color tint;
-
-  /// Rim color; its alpha is ignored (the light model sets the strength).
-  /// [Colors.transparent] (alpha 0) draws no rim.
-  final Color rimColor;
-
-  /// 0..1 scale of the rim light (0.1.6 `visibility`, used by morphs).
-  final double rimStrength;
-
-  /// Saturation matrix (Rec. 601 luma, as FakeGlass).
   static List<double> _saturation(double s) {
     const r = 0.299, g = 0.587, b = 0.114;
     final i = 1 - s;
     return [
-      r * i + s, g * i, b * i, 0, 0, //
-      r * i, g * i + s, b * i, 0, 0, //
-      r * i, g * i, b * i + s, 0, 0, //
-      0, 0, 0, 1, 0, //
+      r * i + s,
+      g * i,
+      b * i,
+      0,
+      0,
+      r * i,
+      g * i + s,
+      b * i,
+      0,
+      0,
+      r * i,
+      g * i,
+      b * i + s,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
     ];
   }
 
@@ -80,7 +67,6 @@ class GlassEffect extends StatelessWidget {
         tint: tint,
         rimColor: rimColor,
         rimStrength: rimStrength.clamp(0.0, 1.0),
-        // Blend modes need the filtered backdrop in the same layer.
         blendTint: blur,
       ),
       child: child,
@@ -98,13 +84,21 @@ class GlassEffect extends StatelessWidget {
         child: content,
       );
     }
-    return oval
-        ? ClipOval(child: content)
-        : ClipRRect(borderRadius: borderRadius, child: content);
+    if (oval) {
+      return ClipOval(child: content);
+    }
+    return ClipRRect(borderRadius: borderRadius, child: content);
   }
 }
 
 class _GlassPainter extends CustomPainter {
+  final bool oval;
+  final BorderRadius borderRadius;
+  final Color tint;
+  final Color rimColor;
+  final double rimStrength;
+  final bool blendTint;
+
   const _GlassPainter({
     required this.oval,
     required this.borderRadius,
@@ -114,16 +108,22 @@ class _GlassPainter extends CustomPainter {
     required this.blendTint,
   });
 
-  final bool oval;
-  final BorderRadius borderRadius;
-  final Color tint;
-  final Color rimColor;
-  final double rimStrength;
-  final bool blendTint;
+  Path _shape(Rect rect) {
+    if (oval) {
+      return Path()..addOval(rect);
+    }
+    return Path()..addRRect(borderRadius.toRRect(rect));
+  }
 
-  Path _shape(Rect rect) => oval
-      ? (Path()..addOval(rect))
-      : (Path()..addRRect(borderRadius.toRRect(rect)));
+  BlendMode _resolveTintBlendMode() {
+    if (!blendTint) {
+      return BlendMode.srcOver;
+    }
+    if (tint.computeLuminance() < 0.5) {
+      return BlendMode.multiply;
+    }
+    return BlendMode.screen;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -133,11 +133,7 @@ class _GlassPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final path = _shape(rect);
     if (tint.a > 0) {
-      final BlendMode mode = !blendTint
-          ? BlendMode.srcOver
-          : tint.computeLuminance() < 0.5
-          ? BlendMode.multiply
-          : BlendMode.screen;
+      final mode = _resolveTintBlendMode();
       canvas.drawPath(
         path,
         Paint()
@@ -150,8 +146,6 @@ class _GlassPainter extends CustomPainter {
     }
   }
 
-  /// Specular rim: a linear gradient along the light direction, bright at
-  /// both ends and clear in the middle band, stroked along the outline.
   void _paintRim(Canvas canvas, Path path, Rect rect) {
     final intensity = AppGlass.lightIntensity * rimStrength;
     final thicknessFactor = (AppGlass.thickness / 5).clamp(0.0, 1.0);
@@ -160,7 +154,6 @@ class _GlassPainter extends CustomPainter {
     final x = math.cos(AppGlass.lightAngle);
     final y = math.sin(AppGlass.lightAngle);
 
-    // Light coverage and how the band adapts to non-square shapes.
     final coverage = ui.lerpDouble(0.3, 0.5, intensity)!;
     final aspect = rect.width / rect.height;
     final alongShortSide = (aspect < 1 ? y : x).abs();

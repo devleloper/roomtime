@@ -1,29 +1,32 @@
 import 'dart:convert';
 
 import 'package:injectable/injectable.dart';
+import 'package:roomtime/data/local/key_value_store.dart';
+import 'package:roomtime/domain/entities/recent_room.dart';
+import 'package:roomtime/domain/entities/room_code.dart';
+import 'package:roomtime/domain/repositories/recent_rooms_repository.dart';
 
-import '../../domain/entities/recent_room.dart';
-import '../../domain/entities/room.dart';
-import '../../domain/entities/room_code.dart';
-import '../../domain/repositories/i_recent_rooms_repository.dart';
-import '../datasources/key_value_store.dart';
-
-@LazySingleton(as: IRecentRoomsRepository)
-class RecentRoomsRepository implements IRecentRoomsRepository {
-  RecentRoomsRepository(this._store);
-
+@LazySingleton(as: RecentRoomsRepository)
+class LocalRecentRoomsRepository implements RecentRoomsRepository {
   static const _key = 'recent_rooms';
   static const maxEntries = 20;
 
   final KeyValueStore _store;
 
+  LocalRecentRoomsRepository(this._store);
+
   @override
   Future<List<RecentRoom>> load() async {
     final raw = await _store.read(_key);
-    if (raw == null) return const [];
+    if (raw == null) {
+      return const [];
+    }
+
     try {
       final json = jsonDecode(raw);
-      if (json is! List) return const [];
+      if (json is! List) {
+        return const [];
+      }
       return List.unmodifiable(json.map(_decode).nonNulls);
     } on FormatException {
       return const [];
@@ -32,70 +35,50 @@ class RecentRoomsRepository implements IRecentRoomsRepository {
 
   @override
   Future<void> record(RecentRoom room) async {
-    final rooms = (await load()).where((r) => r.code != room.code).toList();
-    // Before the first entry that is not newer: a fresh join (or a tie)
-    // goes to the top, a restored entry back to its place.
+    final existing = await load();
+    final rooms = existing.where((entry) => entry.code != room.code).toList();
+
     final index = rooms.indexWhere(
-      (r) => !r.lastJoined.isAfter(room.lastJoined),
+      (entry) => !entry.lastJoined.isAfter(room.lastJoined),
     );
-    rooms.insert(index < 0 ? rooms.length : index, room);
+    final targetIndex = index < 0 ? rooms.length : index;
+    rooms.insert(targetIndex, room);
+
     await _save(rooms.take(maxEntries));
   }
 
   @override
   Future<void> remove(RoomCode code) async {
-    await _save((await load()).where((r) => r.code != code));
+    final existing = await load();
+    final remaining = existing.where((entry) => entry.code != code);
+    await _save(remaining);
   }
 
   @override
   Future<void> replaceCode(RoomCode oldCode, RoomCode newCode) async {
-    await _save(
-      (await load()).map(
-        (r) => r.code == oldCode
-            ? RecentRoom(
-                code: newCode,
-                name: r.name,
-                role: r.role,
-                lastJoined: r.lastJoined,
-              )
-            : r,
-      ),
-    );
+    final existing = await load();
+    final updated = existing.map((entry) {
+      if (entry.code != oldCode) {
+        return entry;
+      }
+      return entry.copyWith(code: newCode);
+    });
+    await _save(updated);
   }
 
-  Future<void> _save(Iterable<RecentRoom> rooms) => _store.write(
-    _key,
-    jsonEncode([
-      for (final r in rooms)
-        {
-          'code': r.code.value,
-          'name': r.name,
-          'role': r.role.name,
-          'lastJoined': r.lastJoined.toUtc().toIso8601String(),
-        },
-    ]),
-  );
+  Future<void> _save(Iterable<RecentRoom> rooms) {
+    final payload = jsonEncode([for (final room in rooms) room.toJson()]);
+    return _store.write(_key, payload);
+  }
 
   RecentRoom? _decode(Object? json) {
-    if (json case {
-      'code': String code,
-      'role': String role,
-      'lastJoined': String lastJoined,
-    }) {
-      final parsedCode = RoomCode.tryParse(code);
-      final parsedRole = RoomRole.values.asNameMap()[role];
-      final parsedDate = DateTime.tryParse(lastJoined);
-      if (parsedCode == null || parsedRole == null || parsedDate == null) {
-        return null;
-      }
-      final name = (json as Map)['name'];
-      return RecentRoom(
-        code: parsedCode,
-        name: name is String ? name : null,
-        role: parsedRole,
-        lastJoined: parsedDate,
-      );
+    if (json is! Map<String, dynamic>) {
+      return null;
     }
-    return null;
+    try {
+      return RecentRoom.fromJson(json);
+    } on Object {
+      return null;
+    }
   }
 }

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
 
-import '../../../theme/theme.dart';
-
-/// Picture-in-picture tile: drag anywhere, pinch to resize, snaps to the
-/// nearest side on release; tap swaps it with the full-screen tile.
 class DraggablePipView extends StatefulWidget {
+  final Widget child;
+  final Size initialSize;
+  final double minScale;
+  final double maxScale;
+
+  final double bottomInset;
+  final VoidCallback? onTap;
+
   const DraggablePipView({
     super.key,
     required this.child,
@@ -15,24 +20,16 @@ class DraggablePipView extends StatefulWidget {
     this.onTap,
   });
 
-  final Widget child;
-  final Size initialSize;
-  final double minScale;
-  final double maxScale;
-
-  /// Space kept free at the bottom for the controls bar.
-  final double bottomInset;
-  final VoidCallback? onTap;
-
   @override
-  State<DraggablePipView> createState() => _DraggablePipViewState();
+  State<DraggablePipView> createState() {
+    return _DraggablePipViewState();
+  }
 }
 
 class _DraggablePipViewState extends State<DraggablePipView>
     with SingleTickerProviderStateMixin {
   static const _margin = AppSpacing.lg;
 
-  // Starts far away so the first clamp puts it in the bottom-end corner.
   Offset _position = const Offset(100000, 100000);
   double _scale = 1;
   double _baseScale = 1;
@@ -51,10 +48,14 @@ class _DraggablePipViewState extends State<DraggablePipView>
 
   void _onSnapTick() {
     final animation = _snapAnimation;
-    if (animation != null) setState(() => _position = animation.value);
+    if (animation != null) {
+      setState(() => _position = animation.value);
+    }
   }
 
-  Size get _size => widget.initialSize * _scale;
+  Size get _size {
+    return widget.initialSize * _scale;
+  }
 
   Rect _bounds(BuildContext context) {
     final screen = MediaQuery.sizeOf(context);
@@ -110,7 +111,6 @@ class _DraggablePipViewState extends State<DraggablePipView>
 
   @override
   Widget build(BuildContext context) {
-    // Re-clamped on every build so rotation keeps it on screen.
     final bounds = _bounds(context);
     _position = Offset(
       _position.dx.clamp(bounds.left, bounds.right),
@@ -128,7 +128,6 @@ class _DraggablePipViewState extends State<DraggablePipView>
         onScaleStart: _onScaleStart,
         onScaleUpdate: _onScaleUpdate,
         onScaleEnd: _onScaleEnd,
-        // Elevation and shadow colour from the theme tokens.
         child: Material(
           elevation: AppElevation.level3,
           color: Theme.of(context).colorScheme.surfaceContainerHighest,

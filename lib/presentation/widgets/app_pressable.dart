@@ -1,21 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import '../theme/app_tokens.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
 
 typedef AppPressableBuilder =
     Widget Function(BuildContext context, Set<WidgetState> states);
 
-/// Accessible building block for custom tappable visuals (call controls,
-/// video tiles, PiP) and the base of `CustomBounceButton` and
-/// `LiquidBounceButton`.
-///
-/// Provides: focusability and traversal, activation with Enter, Space,
-/// Select and gamepad A, click cursor, hover/focus/pressed states for the
-/// [builder] (`WidgetState.focused` only while the keyboard focus highlight
-/// is visible), button semantics with label and toggled/selected state, and
-/// press scale that is skipped when animations are disabled.
 class AppPressable extends StatefulWidget {
+  static const Map<ShortcutActivator, Intent> _shortcuts = {
+    SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+    SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
+    SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+    SingleActivator(LogicalKeyboardKey.select): ActivateIntent(),
+    SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
+  };
+
+  final VoidCallback? onPressed;
+  final VoidCallback? onLongPress;
+  final AppPressableBuilder builder;
+
+  final String? semanticLabel;
+
+  final bool? toggled;
+
+  final bool? selected;
+
+  final String? tooltip;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final bool pressScale;
+
+  final double pressedScale;
+
+  final Duration pressInDuration;
+
   const AppPressable({
     super.key,
     required this.onPressed,
@@ -32,45 +49,6 @@ class AppPressable extends StatefulWidget {
     this.pressInDuration = AppMotion.pressIn,
   });
 
-  /// Null disables the control (not focusable, semantics `enabled: false`).
-  final VoidCallback? onPressed;
-  final VoidCallback? onLongPress;
-  final AppPressableBuilder builder;
-
-  /// Accessible name. When set, descendants' semantics are replaced by it;
-  /// when null, text inside [builder] provides the name.
-  final String? semanticLabel;
-
-  /// On/off state for toggle controls (mic, camera). Null: not a toggle.
-  final bool? toggled;
-
-  /// Selection state (e.g. the pinned tile). Null: not selectable.
-  final bool? selected;
-
-  /// Shown on hover and long press; excluded from semantics so the name is
-  /// not read twice.
-  final String? tooltip;
-  final FocusNode? focusNode;
-  final bool autofocus;
-  final bool pressScale;
-
-  /// Scale while pressed: below 1 shrinks (default), above 1 is the 0.1.6
-  /// bounce (`AppMotion.bounceScale`, `bounceScaleSmall`). In with
-  /// `AppMotion.pressIn`, back with an easeOutBack overshoot.
-  final double pressedScale;
-
-  /// Duration of the press-in scale (0.1.6 `CustomBounceButton.duration`);
-  /// the release always takes `AppMotion.pressRelease`.
-  final Duration pressInDuration;
-
-  static const Map<ShortcutActivator, Intent> _shortcuts = {
-    SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.select): ActivateIntent(),
-    SingleActivator(LogicalKeyboardKey.gameButtonA): ActivateIntent(),
-  };
-
   @override
   State<AppPressable> createState() => _AppPressableState();
 }
@@ -80,14 +58,24 @@ class _AppPressableState extends State<AppPressable> {
   bool _focused = false;
   bool _pressed = false;
 
-  bool get _enabled => widget.onPressed != null;
-
   late final Map<Type, Action<Intent>> _actions = {
     ActivateIntent: CallbackAction<ActivateIntent>(onInvoke: _activate),
     ButtonActivateIntent: CallbackAction<ButtonActivateIntent>(
       onInvoke: _activate,
     ),
   };
+
+  bool get _enabled => widget.onPressed != null;
+
+  Set<WidgetState> get _states {
+    return {
+      if (!_enabled) WidgetState.disabled,
+      if (_hovered) WidgetState.hovered,
+      if (_focused) WidgetState.focused,
+      if (_pressed) WidgetState.pressed,
+      if (widget.selected ?? false) WidgetState.selected,
+    };
+  }
 
   Object? _activate(Intent intent) {
     widget.onPressed?.call();
@@ -96,7 +84,9 @@ class _AppPressableState extends State<AppPressable> {
 
   void _setPressed(bool value) {
     if (_pressed != value) {
-      setState(() => _pressed = value);
+      setState(() {
+        _pressed = value;
+      });
     }
   }
 
@@ -108,14 +98,6 @@ class _AppPressableState extends State<AppPressable> {
       _pressed = false;
     }
   }
-
-  Set<WidgetState> get _states => {
-    if (!_enabled) WidgetState.disabled,
-    if (_hovered) WidgetState.hovered,
-    if (_focused) WidgetState.focused,
-    if (_pressed) WidgetState.pressed,
-    if (widget.selected ?? false) WidgetState.selected,
-  };
 
   @override
   Widget build(BuildContext context) {
@@ -141,9 +123,6 @@ class _AppPressableState extends State<AppPressable> {
       child: content,
     );
 
-    // Press feedback starts on pointer down, before the gesture arena
-    // decides (0.1.6 bounce buttons used a Listener too), so it does not
-    // wait for kPressTimeout next to a tooltip or inside a scroll view.
     content = Listener(
       behavior: HitTestBehavior.opaque,
       onPointerDown: _enabled ? (_) => _setPressed(true) : null,
@@ -166,8 +145,6 @@ class _AppPressableState extends State<AppPressable> {
       child: content,
     );
 
-    // Outermost, so the focusable/focused flags of the Focus widget inside
-    // merge into this button node.
     content = Semantics(
       container: true,
       button: true,

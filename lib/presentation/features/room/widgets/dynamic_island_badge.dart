@@ -2,30 +2,16 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:roomtime/presentation/theme/app_color_schemes.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
+import 'package:roomtime/presentation/widgets/glass_surface.dart';
 
-import '../../../theme/app_color_schemes.dart';
-import '../../../theme/app_tokens.dart';
-import '../../../widgets/glass_surface.dart';
-
-/// The room name badge of dev-0.1.6 at the top of the call, with its
-/// original constructor: white 16 w600 text on glass, stadium shape,
-/// minimum height 44.
-///
-/// - [isVisible] drives the animation; a hidden badge leaves the semantics
-///   tree.
-/// - Without [hasDynamicIsland] (landscape, web, desktop, other phones) it
-///   slides down from above and fades in (400 ms in, 300 ms out,
-///   easeOutCubic).
-/// - With [hasDynamicIsland] it grows out of the hardware island: a solid
-///   black 125 x 37 pill over the island morphs into glass (650 ms
-///   easeOutQuint, no bounce) and morphs back when hidden. The caller
-///   decides whether the device has an island (portrait only);
-///   [islandOffset] is the vertical distance from the badge's resting top
-///   to the island's top, usually
-///   `AppSizes.dynamicIslandTop - (safeTop + AppSpacing.lg)` (negative).
-/// - Reduced motion: shows and hides instantly, no morph.
-/// - The name is one line and ellipsizes; it scales with the text size.
 class DynamicIslandBadge extends StatefulWidget {
+  final String roomName;
+  final bool isVisible;
+  final bool hasDynamicIsland;
+  final double islandOffset;
+
   const DynamicIslandBadge({
     super.key,
     required this.roomName,
@@ -34,13 +20,10 @@ class DynamicIslandBadge extends StatefulWidget {
     this.islandOffset = 0,
   });
 
-  final String roomName;
-  final bool isVisible;
-  final bool hasDynamicIsland;
-  final double islandOffset;
-
   @override
-  State<DynamicIslandBadge> createState() => _DynamicIslandBadgeState();
+  State<DynamicIslandBadge> createState() {
+    return _DynamicIslandBadgeState();
+  }
 }
 
 class _DynamicIslandBadgeState extends State<DynamicIslandBadge>
@@ -51,7 +34,9 @@ class _DynamicIslandBadgeState extends State<DynamicIslandBadge>
   );
   bool _started = false;
 
-  bool get _island => widget.hasDynamicIsland;
+  bool get _island {
+    return widget.hasDynamicIsland;
+  }
 
   @override
   void didChangeDependencies() {
@@ -71,17 +56,23 @@ class _DynamicIslandBadgeState extends State<DynamicIslandBadge>
     }
   }
 
+  Duration _resolveDuration(bool visible) {
+    if (_island) {
+      return AppMotion.islandMorph;
+    }
+    if (visible) {
+      return AppMotion.pillIn;
+    }
+    return AppMotion.pillOut;
+  }
+
   void _animateTo(bool visible) {
     final target = visible ? 1.0 : 0.0;
     if (AppMotion.reduced(context)) {
       _controller.value = target;
       return;
     }
-    final duration = _island
-        ? AppMotion.islandMorph
-        : visible
-        ? AppMotion.pillIn
-        : AppMotion.pillOut;
+    final duration = _resolveDuration(visible);
     _controller.animateTo(target, duration: duration, curve: Curves.linear);
   }
 
@@ -164,7 +155,6 @@ class _DynamicIslandBadgeState extends State<DynamicIslandBadge>
     return Transform.translate(
       offset: Offset(0, lerpDouble(widget.islandOffset, 0, t)!),
       child: _pill(
-        // The island is 37 tall; the size lerp below grows it to the pill.
         minHeight: 0,
         tint: black.withValues(
           alpha: lerpDouble(1, AppGlass.overlayMinAlpha, t),
@@ -184,17 +174,16 @@ class _DynamicIslandBadgeState extends State<DynamicIslandBadge>
   }
 }
 
-/// Sizes itself between [from] and the child's natural size by [t], with
-/// the child centred and clipped (the island growing into the pill).
 class _SizeLerp extends SingleChildRenderObjectWidget {
-  const _SizeLerp({required this.from, required this.t, super.child});
-
   final Size from;
   final double t;
 
+  const _SizeLerp({required this.from, required this.t, super.child});
+
   @override
-  _RenderSizeLerp createRenderObject(BuildContext context) =>
-      _RenderSizeLerp(from, t);
+  _RenderSizeLerp createRenderObject(BuildContext context) {
+    return _RenderSizeLerp(from, t);
+  }
 
   @override
   void updateRenderObject(BuildContext context, _RenderSizeLerp renderObject) {
@@ -205,9 +194,11 @@ class _SizeLerp extends SingleChildRenderObjectWidget {
 }
 
 class _RenderSizeLerp extends RenderShiftedBox {
+  Size _from;
+  double _t;
+
   _RenderSizeLerp(this._from, this._t) : super(null);
 
-  Size _from;
   set from(Size value) {
     if (value != _from) {
       _from = value;
@@ -215,7 +206,6 @@ class _RenderSizeLerp extends RenderShiftedBox {
     }
   }
 
-  double _t;
   set t(double value) {
     if (value != _t) {
       _t = value;

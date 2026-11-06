@@ -8,7 +8,7 @@ import 'package:roomtime/presentation/features/room/bloc/lobby_cubit.dart';
 import 'package:roomtime/presentation/features/room/bloc/room_bloc.dart';
 import 'package:roomtime/presentation/features/room/view/call_view.dart';
 import 'package:roomtime/presentation/features/room/view/room_screen.dart';
-import 'package:roomtime/presentation/dialogs/glass_dialog.dart';
+import 'package:roomtime/presentation/widgets/glass_button.dart';
 import 'package:roomtime/presentation/features/room/widgets/media_controls.dart';
 import 'package:roomtime/presentation/features/room/widgets/participants_panel.dart';
 import 'package:flutter/material.dart';
@@ -105,7 +105,6 @@ void main() {
     await tapVisible(tester, joinButton());
   }
 
-  /// Joins as host and puts Bob in the call.
   Future<void> hostWithBob(WidgetTester tester, {Size? size}) async {
     rooms
       ..owner = true
@@ -159,7 +158,6 @@ void main() {
       await joinCall(tester);
 
       expect(find.text(l10n.roomWrongPassword), findsOneWidget);
-      // the field is emptied, not selected, and Join waits for input.
       expect(tester.widget<TextField>(passwordField).controller!.text, isEmpty);
       expect(tester.widget<GlassDialogButton>(joinButton()).onPressed, isNull);
       expect(rooms.joinPasswords, ['wrong']);
@@ -171,7 +169,6 @@ void main() {
       expect(find.byType(CallView), findsOneWidget);
     });
 
-    // the password is sent exactly as typed, spaces included.
     testWidgets('the lobby sends the password verbatim, not trimmed', (
       tester,
     ) async {
@@ -248,7 +245,6 @@ void main() {
       await joinCall(tester);
       expect(find.text(l10n.roomLockedTitle), findsOneWidget);
 
-      // "Try again" starts a fresh attempt from the lobby.
       rooms.onJoin = (_, _) => Future.error(const ParticipantBannedFailure());
       await tapVisible(tester, find.text(l10n.roomTryAgain));
       expect(rooms.lookupCalls, 2);
@@ -519,8 +515,7 @@ void main() {
     });
   });
 
-  // Review regressions: each test fails without its fix.
-  group('review regressions', () {
+  group('shortcuts, navigation and accessibility', () {
     Future<void> chord(WidgetTester tester, LogicalKeyboardKey key) async {
       await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
       await tester.sendKeyEvent(key);
@@ -539,7 +534,6 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    // a returning user (stored name) has the shortcuts at once.
     testWidgets('lobby: Ctrl+E works with a prefilled name', (tester) async {
       await pumpRoom(tester, size: const Size(1200, 800));
       expect(preview.state.cameraEnabled, isTrue);
@@ -549,7 +543,6 @@ void main() {
       expect(preview.state.cameraEnabled, isFalse);
     }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
-    // while the preview releases the camera, nothing reopens it.
     testWidgets('lobby: device toggles are off from the Join tap on', (
       tester,
     ) async {
@@ -586,7 +579,6 @@ void main() {
       expect(find.text(l10n.roomPermAllow), findsNothing);
     });
 
-    // the room password is never offered to a password manager.
     testWidgets('lobby: the password field has no autofill', (tester) async {
       rooms.lookupResult = sampleSummary(passwordRequired: true);
       await pumpRoom(tester);
@@ -597,7 +589,6 @@ void main() {
       expect(field.enableSuggestions, isFalse);
     });
 
-    // the live region is announced once, not every second.
     testWidgets('lobby: the lock-out live region does not tick', (
       tester,
     ) async {
@@ -630,7 +621,6 @@ void main() {
       semantics.dispose();
     });
 
-    // system Back.
     testWidgets('Back in the lobby goes Home', (tester) async {
       await pumpRoom(tester);
       await tester.binding.handlePopRoute();
@@ -689,7 +679,6 @@ void main() {
       expect(await left, isTrue);
     });
 
-    // the idle timer re-arms when hiding becomes possible.
     testWidgets('controls hide after the first guest joins a long wait', (
       tester,
     ) async {
@@ -710,7 +699,6 @@ void main() {
       expect(control(l10n.roomLeave).hitTestable(), findsNothing);
     });
 
-    // never scaled below 48 dp, text never shrunk.
     for (final (size, scale) in [
       (const Size(600, 960), 2.0),
       (const Size(700, 900), 1.0),
@@ -777,7 +765,6 @@ void main() {
       semantics.dispose();
     });
 
-    // a microphone that failed at join is explained in the call.
     testWidgets('call: an unavailable microphone shows a banner with retry', (
       tester,
     ) async {
@@ -797,7 +784,6 @@ void main() {
       expect(session().microphoneCommands, [true]);
     });
 
-    // message and action say different things.
     testWidgets('call: the autoplay banner has its own action label', (
       tester,
     ) async {
@@ -814,7 +800,6 @@ void main() {
       expect(session().startAudioCalls, 1);
     });
 
-    // Escape closes the participants dialog.
     testWidgets('call: Escape closes the participants dialog', (tester) async {
       await participantWithBob(tester, size: const Size(1280, 800));
       await tester.tap(control(l10n.roomParticipants));
@@ -827,7 +812,6 @@ void main() {
       expect(find.byType(ParticipantsPanel), findsNothing);
     });
 
-    // semantics of the count, the mic and the network.
     testWidgets('call: participants count, mic state and weak connection are '
         'spoken', (tester) async {
       final semantics = tester.ensureSemantics();

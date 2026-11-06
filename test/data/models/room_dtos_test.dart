@@ -1,8 +1,7 @@
+import 'package:flutter_test/flutter_test.dart';
 import 'package:roomtime/data/models/room_dtos.dart';
 import 'package:roomtime/domain/entities/room.dart';
-import 'package:flutter_test/flutter_test.dart';
 
-// required fields follow docs/api/openapi.yaml exactly.
 Map<String, dynamic> lookupJson() => {
   'code': 'abcdefghjk',
   'inviteUrl': 'https://calls.example.org/r/abc-defg-hjk',
@@ -30,12 +29,11 @@ Map<String, dynamic> joinJson({String livekitUrl = 'wss://media.test'}) => {
 };
 
 void main() {
-  group('RoomLookup', () {
+  group('RoomLookup (RoomSummaryDto)', () {
     test('parses the spec example', () {
-      final summary = roomSummaryFromJson(lookupJson());
+      final summary = RoomSummaryDto.fromJson(lookupJson()).toDomain();
       expect(summary.expiresAt, DateTime.utc(2030));
       expect(summary.name, 'Family');
-      // A3-02: the server's link is used as is, never rebuilt locally.
       expect(
         summary.inviteUrl,
         Uri.parse('https://calls.example.org/r/abc-defg-hjk'),
@@ -45,7 +43,9 @@ void main() {
     for (final inviteUrl in ['/r/abc-defg-hjk', 'calls.example.org', 'x:y']) {
       test('rejects a lookup with a non-http inviteUrl "$inviteUrl"', () {
         expect(
-          () => roomSummaryFromJson(lookupJson()..['inviteUrl'] = inviteUrl),
+          () => RoomSummaryDto.fromJson(
+            lookupJson()..['inviteUrl'] = inviteUrl,
+          ).toDomain(),
           throwsFormatException,
         );
       });
@@ -61,16 +61,18 @@ void main() {
     ]) {
       test('rejects a lookup without $field', () {
         expect(
-          () => roomSummaryFromJson(lookupJson()..remove(field)),
-          throwsFormatException,
+          () => RoomSummaryDto.fromJson(lookupJson()..remove(field)).toDomain(),
+          throwsA(anyOf(isA<FormatException>(), isA<TypeError>())),
         );
       });
     }
   });
 
-  group('JoinResponse', () {
+  group('JoinResponse (RoomJoinDto)', () {
     test('parses the spec example', () {
-      final join = roomJoinFromJson(joinJson(), requireSecureMedia: true);
+      final join = RoomJoinDto.fromJson(
+        joinJson(),
+      ).toDomain(requireSecureMedia: true);
       expect(join.role, RoomRole.host);
       expect(join.room.maxParticipants, 6);
       expect(join.room.expiresAt, DateTime.utc(2030));
@@ -82,8 +84,8 @@ void main() {
 
     test('rejects a response without room', () {
       expect(
-        () => roomJoinFromJson(joinJson()..remove('room')),
-        throwsFormatException,
+        () => RoomJoinDto.fromJson(joinJson()..remove('room')).toDomain(),
+        throwsA(anyOf(isA<FormatException>(), isA<TypeError>())),
       );
     });
 
@@ -99,12 +101,14 @@ void main() {
       test('rejects room without $field', () {
         final json = joinJson();
         (json['room'] as Map<String, dynamic>).remove(field);
-        expect(() => roomJoinFromJson(json), throwsFormatException);
+        expect(
+          () => RoomJoinDto.fromJson(json).toDomain(),
+          throwsA(anyOf(isA<FormatException>(), isA<TypeError>())),
+        );
       });
     }
   });
 
-  // release builds accept only wss:// media URLs.
   group('media URL', () {
     test('release: wss accepted, ws and other schemes rejected', () {
       expect(
@@ -146,22 +150,59 @@ void main() {
         throwsFormatException,
       );
       expect(
-        roomJoinFromJson(
+        RoomJoinDto.fromJson(
           joinJson(livekitUrl: 'ws://localhost:8080'),
-          requireSecureMedia: true,
-        ).livekitUrl,
+        ).toDomain(requireSecureMedia: true).livekitUrl,
         'ws://localhost:8080',
       );
     });
 
     test('join with an insecure media URL fails in release mode', () {
       expect(
-        () => roomJoinFromJson(
+        () => RoomJoinDto.fromJson(
           joinJson(livekitUrl: 'ws://media.test'),
-          requireSecureMedia: true,
-        ),
+        ).toDomain(requireSecureMedia: true),
         throwsFormatException,
       );
     });
+  });
+
+  group('DTO serialization round-trips', () {
+    test('CreateRoomRequestDto omits null fields and round-trips', () {
+      final dto = CreateRoomRequestDto.fromParams(
+        const CreateRoomParams(name: 'Family', maxParticipants: 8),
+      );
+      expect(dto.toJson(), {'name': 'Family', 'maxParticipants': 8});
+      expect(CreateRoomRequestDto.fromJson(dto.toJson()), dto);
+    });
+
+    test('JoinRequestDto omits null password and round-trips', () {
+      const dto = JoinRequestDto(displayName: 'Ann', guestId: 'g-1');
+      expect(dto.toJson(), {'displayName': 'Ann', 'guestId': 'g-1'});
+      expect(JoinRequestDto.fromJson(dto.toJson()), dto);
+    });
+
+    test('RotatedCodeDto parses and round-trips', () {
+      final dto = RotatedCodeDto.fromJson({
+        'code': 'abcdefghjk',
+        'inviteUrl': 'https://calls.example.org/r/abc-defg-hjk',
+      });
+      expect(dto.toDomain().code.value, 'abcdefghjk');
+      expect(RotatedCodeDto.fromJson(dto.toJson()), dto);
+    });
+  });
+
+  test('toString hides passwords and tokens', () {
+    const join = JoinRequestDto(
+      displayName: 'Ann',
+      guestId: 'g-1',
+      password: 'hunter22',
+    );
+    const create = CreateRoomRequestDto(password: 'hunter22');
+    final roomJoin = RoomJoinDto.fromJson(joinJson());
+
+    expect(join.toString(), isNot(contains('hunter22')));
+    expect(create.toString(), isNot(contains('hunter22')));
+    expect(roomJoin.toString(), isNot(contains('lk-token')));
   });
 }

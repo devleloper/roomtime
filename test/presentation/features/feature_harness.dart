@@ -2,13 +2,11 @@ import 'dart:async';
 
 import 'package:roomtime/domain/services/media_preview.dart';
 import 'package:roomtime/l10n/app_localizations.dart';
-import 'package:roomtime/presentation/theme/theme.dart';
+import 'package:roomtime/presentation/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-/// Pumps a router app with [routes] at [location], like the real app but
-/// with test MediaQuery settings.
 Future<GoRouter> pumpRouterApp(
   WidgetTester tester, {
   required List<RouteBase> routes,
@@ -28,7 +26,6 @@ Future<GoRouter> pumpRouterApp(
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      // As in main.dart: dark-only.
       theme: AppTheme.dark,
       themeMode: ThemeMode.dark,
       routerConfig: router,
@@ -45,13 +42,11 @@ Future<GoRouter> pumpRouterApp(
   return router;
 }
 
-/// Placeholder destination that shows where navigation went.
 GoRoute placeholderRoute(String path) => GoRoute(
   path: path,
   builder: (context, state) => Scaffold(body: Text('at ${state.uri.path}')),
 );
 
-/// In-memory [MediaPreview]: records calls, no devices.
 class FakeMediaPreview implements MediaPreview {
   final _states = StreamController<MediaPreviewState>.broadcast(sync: true);
   MediaPreviewState _state = const MediaPreviewState();
@@ -61,7 +56,6 @@ class FakeMediaPreview implements MediaPreview {
   int requestCalls = 0;
   int refreshCalls = 0;
 
-  /// Access reported on start (e.g. denied camera).
   DeviceAccess cameraAccess = DeviceAccess.granted;
   DeviceAccess microphoneAccess = DeviceAccess.granted;
 
@@ -109,7 +103,6 @@ class FakeMediaPreview implements MediaPreview {
   @override
   Future<void> openSettings() async {}
 
-  /// Holds [release] open, like a camera that takes time to stop.
   Completer<void>? pendingRelease;
 
   @override
@@ -125,7 +118,6 @@ class FakeMediaPreview implements MediaPreview {
   }
 }
 
-/// Scrolls [finder] into view (large text pushes things down), then taps.
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();

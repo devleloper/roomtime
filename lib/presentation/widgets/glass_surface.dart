@@ -1,29 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:roomtime/presentation/theme/app_color_schemes.dart';
+import 'package:roomtime/presentation/theme/app_colors.dart';
+import 'package:roomtime/presentation/theme/app_tokens.dart';
+import 'package:roomtime/presentation/widgets/glass_effect.dart';
 
-import '../theme/app_color_schemes.dart';
-import '../theme/app_tokens.dart';
-import 'glass_effect.dart';
+const double callHudTintAlpha = 0.7;
 
-/// Where a [GlassSurface] sits; decides its minimum opacity.
-enum GlassVariant {
-  /// Over static app backgrounds (home, lobby cards, dialogs).
-  panel,
+enum GlassVariant { panel, overlay }
 
-  /// Over live video or the camera (call controls, room pill, captions): a
-  /// black tint of at least 60 % so white text stays >= 5.74:1 on any
-  /// frame.
-  overlay,
-}
-
-/// Frosted glass panel with a readability floor (the room name badge),
-/// drawn with the dev-0.1.6 material ([GlassEffect]: saturated blur,
-/// multiplied tint, specular rim), so it matches `LiquidGlassContainer`.
-///
-/// On top of the 0.1.6 look it keeps text readable: a [tint] lighter than
-/// the variant minimum is raised to it, and with "Increase contrast" / high
-/// contrast, or when [blur] is false, it drops the blur and uses a
-/// near-opaque tint.
 class GlassSurface extends StatelessWidget {
+  final Widget child;
+  final GlassVariant variant;
+  final BorderRadius borderRadius;
+  final EdgeInsetsGeometry padding;
+  final Color? tint;
+  final Color? borderColor;
+  final double blurSigma;
+  final bool? blur;
+  final double highlight;
+
   const GlassSurface({
     super.key,
     required this.child,
@@ -37,32 +32,9 @@ class GlassSurface extends StatelessWidget {
     this.highlight = 1,
   });
 
-  final Widget child;
-  final GlassVariant variant;
-  final BorderRadius borderRadius;
-  final EdgeInsetsGeometry padding;
-
-  /// Fill color; defaults to `surfaceContainer` (panel) or the video scrim
-  /// (overlay). Its alpha is raised to the variant minimum.
-  final Color? tint;
-
-  /// Rim color (white by default; only its hue is used, see
-  /// [GlassEffect.rimColor]). Pass [Colors.transparent] for none.
-  final Color? borderColor;
-  final double blurSigma;
-
-  /// Force blur on or off; null follows accessibility settings (see
-  /// [blurAvailable]).
-  final bool? blur;
-
-  /// Strength of the specular rim, 0..1 (0 = none). Animations (the room
-  /// pill morph) fade it in.
-  final double highlight;
-
-  /// Whether a live backdrop blur should be drawn in [context]: everywhere,
-  /// web included, unless the user asks for high contrast.
-  static bool blurAvailable(BuildContext context) =>
-      !MediaQuery.highContrastOf(context);
+  static bool blurAvailable(BuildContext context) {
+    return !MediaQuery.highContrastOf(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +68,130 @@ class GlassSurface extends StatelessWidget {
       rimColor: borderColor ?? rim,
       rimStrength: highlight,
       child: Padding(padding: padding, child: child),
+    );
+  }
+}
+
+class LiquidGlassContainer extends StatelessWidget {
+  final Widget child;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final double borderRadius;
+  final double blur;
+  final EdgeInsetsGeometry padding;
+
+  const LiquidGlassContainer({
+    super.key,
+    required this.child,
+    this.backgroundColor,
+    this.borderColor,
+    this.borderRadius = AppRadius.lg,
+    this.blur = AppGlass.containerBlur,
+    this.padding = EdgeInsets.zero,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GlassEffect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      blurSigma: blur * AppGlass.blurFactor,
+      tint:
+          backgroundColor ??
+          scheme.surface.withValues(alpha: AppGlass.containerTintAlpha),
+      rimColor: borderColor ?? scheme.onSurface,
+      child: Padding(padding: padding, child: child),
+    );
+  }
+}
+
+class GlassPanel extends StatelessWidget {
+  static const double overVideoTintAlpha = 0.75;
+
+  final Widget child;
+  final double tintAlpha;
+
+  const GlassPanel({
+    super.key,
+    required this.child,
+    this.tintAlpha = AppGlass.dialogTintAlpha,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LiquidGlassContainer(
+      blur: 30,
+      backgroundColor: AppColors.surface.withValues(alpha: tintAlpha),
+      borderColor: Colors.white.withValues(alpha: 0.2),
+      borderRadius: 24,
+      child: Material(
+        type: MaterialType.transparency,
+        child: SingleChildScrollView(
+          primary: false,
+          padding: const EdgeInsets.all(24),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class GlassHudPill extends StatelessWidget {
+  final IconData icon;
+  final String message;
+
+  const GlassHudPill({super.key, required this.icon, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: LiquidGlassContainer(
+        blur: 12,
+        borderRadius: 100,
+        backgroundColor: Colors.black.withValues(alpha: callHudTintAlpha),
+        borderColor: Colors.white.withValues(alpha: 0.1),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class VideoVeil extends StatelessWidget {
+  static const double tintAlpha = 0.6;
+
+  final Widget child;
+
+  const VideoVeil({super.key, this.child = const SizedBox.expand()});
+
+  @override
+  Widget build(BuildContext context) {
+    return LiquidGlassContainer(
+      blur: AppGlass.veilBlurSigma / AppGlass.blurFactor,
+      backgroundColor: Colors.black.withValues(alpha: tintAlpha),
+      borderColor: Colors.transparent,
+      borderRadius: 0,
+      child: child,
     );
   }
 }
